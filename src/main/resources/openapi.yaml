@@ -1,0 +1,170 @@
+openapi: '3.1.0'
+
+info:
+  title: Nostrrent Web API
+  description: |
+    Nostr-centric decentralized Bittorent content server.
+  version: '1.0.0'
+  license:
+    name: MIT
+
+
+components:
+
+  headers:
+    SeedURL:
+      required: true
+      description: PUT seed endpoint with torrent identifier from preceeding upload
+      schema:
+        example: https://example.com/torrent/seed/fxz4gcf5es9dxhne2vv
+
+  responses:
+    UploadAccepted:
+      description: |
+        Content accepted and Bittorrent content hash (SHA-256) returned for signing.
+        The signed hash must be included when seeding.
+      content:
+        application/json:
+          schema:
+            type: object
+            required: [id, hash]
+            properties:
+              id: { $ref: '#/components/schemas/TorrentID' }
+              hash: { $ref: '#/components/schemas/BTMHash' }
+            example:
+              id: fxz4gcf5es9dxhne2vv
+              hash: b2c3d4e5f60718293a4b5c6d7e8f9a0b1c7c9a7a5d8f3e2a1b4c6d8e9f0a1ab
+
+
+    UploadRejected:
+      description: Upload rejected, reason in body
+
+  schemas:
+    BTMHash:
+      description: Bittorrent SHA-256 hash (64 hex chars)
+      type: string
+      pattern: ^[A-Za-z0-9]{64}$
+      example: b2c3d4e5f60718293a4b5c6d7e8f9a0b1c7c9a7a5d8f3e2a1b4c6d8e9f0a1ab
+    TorrentID:
+      description: Torrent identifier
+      type: string
+      example: fxz4gcf5es9dxhne2vv
+    PubKey:
+      oneOf:
+        - description: Nostr public key (Bech32).
+          type: string
+          pattern: ^npub1[02-9ac-hj-np-z]{58}$
+          example: npub1wwyedzdg43sdfnkpzml0lx3stsfaszkehfv2upf3uutdxs8pqtps6wz3ux
+        - description: Nostr public key (Hexadecimal).
+          type: string
+          pattern: ^[A-Za-z0-9]{64}$
+          example: b2c3d4e5f60718293a4b5c6d7e8f9a0b1c7c9a7a5d8f3e2a1b4c6d8e9f0a1ab
+    HashSig:
+      description: Signed Bittorrent SHA-256 hash (128 hex chars)
+      type: string
+      pattern: ^[A-Za-z0-9]{128}$
+      example: bce32eb0e8b705f24ad949f0527c6ca74fa294fef8dbcc5bf8e6718e2c298e128e0794e48f714dbd8044441be1d47b3416b37ec34ad27c980b63bae1b28e5314
+    MagnetLink:
+      type: string
+      example: magnet:?xt=urn:btmh:1220b2c3d4e5f60718293a4b5c6d7e8f9a0b1c7c9a7a5d8f3e2a1b4c6d8e9f0a1ab
+    SeedOptions-JSON:
+      type: object
+      required: [pubKey, hashSig]
+      properties:
+        pubKey: { $ref: '#/components/schemas/PubKey' }
+        hashSig: { $ref: '#/components/schemas/HashSig' }
+        exposeHttpServer:
+          type: boolean
+          description: |
+            Expose HTTP seeding of torrent file and content (if enabled by server).
+            Optional, defaults to `false`.
+    SeedOptions-FormData:
+      type: object
+      required:
+        - hashSig
+        - pubKey
+      properties:
+        pubKey:
+          $ref: '#/components/schemas/PubKey'
+          description: public key of SHA-256 hash signature
+        hashSig:
+          $ref: '#/components/schemas/HashSig'
+          description: Hexadecimal signature of the SHA-256 hash
+        exposeHttpServer:
+          type: string
+          description: |
+            Expose HTTP seeding of torrent file and content (if enabled by server).
+            Any content, other than "false", is considered `true`.
+            Optional, defaults to `false`.
+
+
+paths:
+
+  /torrent/upload:
+    post:
+      description: |
+        Multipart upload of one or more files.
+        NOTE: File order is preserved, but filenames will change.
+      requestBody:
+        description: Multipart content
+        required: true
+        content:
+          'multipart/form-data': {}
+      responses:
+        '202': {$ref: '#/components/responses/UploadAccepted'}
+        '400': {$ref: '#/components/responses/UploadRejected'}
+
+  /torrent/upload/{filename}:
+    post:
+      summary: Upload single file (will probably be removed)
+      parameters:
+        -
+          name: filename
+          description: Name of the file being uploaded
+          in: path
+          required: true
+          schema:
+            type: string
+      requestBody:
+        description: File content
+        required: true
+        content:
+          '*/*': {}
+      responses:
+        '202': {$ref: '#/components/responses/UploadAccepted'}
+        '400': {$ref: '#/components/responses/UploadRejected'}
+        '411': {$ref: '#/components/responses/UploadRejected'}
+
+  /torrent/seed/{id}:
+    put:
+      parameters:
+        -
+          name: id
+          description: Torrent identifier, obtained when uploading files
+          in: path
+          required: true
+          schema:
+            $ref: '#/components/schemas/TorrentID'
+      requestBody:
+        content:
+          application/x-www-form-urlencoded:
+            schema: { $ref: '#/components/schemas/SeedOptions-FormData' }
+          application/json:
+            schema: { $ref: '#/components/schemas/SeedOptions-JSON' }
+
+      responses:
+        '201':
+          description: Torrent created and seeded
+          headers:
+            Location:
+              required: false
+              description: Torrent file location
+              schema:
+                example: https://example.com/xs/fxz4gcf5es9dxhne2vv.torrent
+            X-Magnet-Link:
+              required: true
+              description: Bittorrent magnet link
+              schema:
+                $ref: '#/components/schemas/MagnetLink'
+          content:
+            application/x-bittorrent: {}
