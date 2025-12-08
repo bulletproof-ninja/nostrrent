@@ -3,7 +3,7 @@ openapi: '3.1.0'
 info:
   title: Nostrrent Web API
   description: |
-    Nostr-centric decentralized Bittorent content server.
+    Nostr-centric decentralized Bittorrent content server.
   version: '1.0.0'
   license:
     name: MIT
@@ -14,14 +14,14 @@ components:
   headers:
     SeedURL:
       required: true
-      description: PUT seed endpoint with torrent identifier from preceeding upload
+      description: PUT seed endpoint with torrent identifier from preceding upload
       schema:
         example: https://example.com/torrent/seed/fxz4gcf5es9dxhne2vv
 
   responses:
     UploadAccepted:
       description: |
-        Content accepted and Bittorrent content hash (SHA-256) returned for signing.
+        Content accepted and Bittorrent identifier and content hash (SHA-256) returned for signing.
         The signed hash must be included when seeding.
       content:
         application/json:
@@ -73,10 +73,10 @@ components:
       properties:
         pubKey: { $ref: '#/components/schemas/PubKey' }
         hashSig: { $ref: '#/components/schemas/HashSig' }
-        exposeHttpServer:
+        hideHttpServer:
           type: boolean
           description: |
-            Expose HTTP seeding of torrent file and content (if enabled by server).
+            Hide HTTP seeding of torrent file and content (if enabled by server).
             Optional, defaults to `false`.
     SeedOptions-FormData:
       type: object
@@ -90,10 +90,10 @@ components:
         hashSig:
           $ref: '#/components/schemas/HashSig'
           description: Hexadecimal signature of the SHA-256 hash
-        exposeHttpServer:
+        hideHttpServer:
           type: string
           description: |
-            Expose HTTP seeding of torrent file and content (if enabled by server).
+            Hide HTTP seeding of torrent file and content (if enabled by server).
             Any content, other than "false", is considered `true`.
             Optional, defaults to `false`.
 
@@ -102,9 +102,17 @@ paths:
 
   /torrent/upload:
     post:
-      description: |
-        Multipart upload of one or more files.
-        NOTE: File order is preserved, but filenames will change.
+      summary: Upload files
+      parameters:
+        - name: v2only
+          description: |-
+            Optional flag to force v2-only torrents (currently not well supported by the Bittorrent network)
+          in: query
+          required: false
+          schema: { type: string }
+      description: |-
+        Multipart upload of one or more files (order is preserved in torrent).
+        NOTE: Filenames will change to preserve ordering and increase portability
       requestBody:
         description: Multipart content
         required: true
@@ -113,27 +121,6 @@ paths:
       responses:
         '202': {$ref: '#/components/responses/UploadAccepted'}
         '400': {$ref: '#/components/responses/UploadRejected'}
-
-  /torrent/upload/{filename}:
-    post:
-      summary: Upload single file (will probably be removed)
-      parameters:
-        -
-          name: filename
-          description: Name of the file being uploaded
-          in: path
-          required: true
-          schema:
-            type: string
-      requestBody:
-        description: File content
-        required: true
-        content:
-          '*/*': {}
-      responses:
-        '202': {$ref: '#/components/responses/UploadAccepted'}
-        '400': {$ref: '#/components/responses/UploadRejected'}
-        '411': {$ref: '#/components/responses/UploadRejected'}
 
   /torrent/seed/{id}:
     put:
@@ -147,10 +134,10 @@ paths:
             $ref: '#/components/schemas/TorrentID'
       requestBody:
         content:
-          application/x-www-form-urlencoded:
-            schema: { $ref: '#/components/schemas/SeedOptions-FormData' }
           application/json:
             schema: { $ref: '#/components/schemas/SeedOptions-JSON' }
+          application/x-www-form-urlencoded:
+            schema: { $ref: '#/components/schemas/SeedOptions-FormData' }
 
       responses:
         '201':
@@ -168,3 +155,7 @@ paths:
                 $ref: '#/components/schemas/MagnetLink'
           content:
             application/x-bittorrent: {}
+        '400':
+          description: Seeding failed, see reason in body. Most commonly if signature validation fails.
+          content:
+            text/plain: {}
