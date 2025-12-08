@@ -1,0 +1,84 @@
+//| mill-version: 1.1.0-RC3
+
+import mill.scalalib.*
+import mill.javalib.*
+
+object `package`
+extends ScalaModule
+with MavenModule:
+  outer =>
+
+  def scalaVersion = "3.7.4"
+  def jvmVersion = "25"
+
+  def sourcesFolders =
+    "src/main/scala" ::
+    Nil
+
+  def mvnDeps =
+    mvn"org.scala-lang:scala3-library_3:$scalaVersion" ::
+    mvn"com.github.plokhotnyuk.jsoniter-scala:jsoniter-scala-core_3:$vJsoniter" ::
+    mvn"com.typesafe.scala-logging:scala-logging_3:$vScalaLogging" ::
+    mvn"ch.qos.logback:logback-classic:$vLogback" ::
+    mvn"org.ngengine:bech32:$vBech32" ::
+    mvn"org.eclipse.jetty.ee10:jetty-ee10-servlet:$vJetty" ::
+    mvn"org.eclipse.jetty:jetty-server:$vJetty" ::
+    mvn"org.eclipse.jetty:jetty-util:$vJetty" ::
+    mvn"org.scalatra:scalatra-jakarta_3:$vScalatra" ::
+    mvn"com.frostwire:jlibtorrent:$vJLibTorrent" ::
+    mvn"com.frostwire:jlibtorrent-linux-x86_64:$vJLibTorrent" ::
+    mvn"com.frostwire:jlibtorrent-windows:$vJLibTorrent" ::
+    mvn"fr.acinq.secp256k1:secp256k1-kmp:$vSecp256k1" ::
+    mvn"fr.acinq.secp256k1:secp256k1-kmp-jvm:$vSecp256k1" ::
+    mvn"fr.acinq.secp256k1:secp256k1-kmp-jni-jvm:$vSecp256k1" ::
+    Nil
+
+  def compileMvnDeps = super.compileMvnDeps() ++ {
+    mvn"com.github.plokhotnyuk.jsoniter-scala:jsoniter-scala-macros_3:$vJsoniter" ::
+    Nil
+  }
+
+  def javacOptions = super.javacOptions() ++ {
+    "-source" :: jvmVersion ::
+    "-target" :: jvmVersion ::
+    Nil
+  }
+
+  def jvmId = s"zulu:$jvmVersion"
+
+  def repositories = super.repositories() ++ {
+    "https://dl.frostwire.com/maven" ::
+    Nil
+  }
+
+  object test
+  extends ScalaTests
+  with TestModule.ScalaTest:
+
+    def sourcesFolders =
+      "src/test/scala" ::
+      Nil
+
+    def mvnDeps = outer.mvnDeps() ++ {
+      mvn"org.scalatest:scalatest_3:$vScalaTest" ::
+      mvn"com.vladsch.flexmark:flexmark-all:$vFlexmark" ::
+      mvn"org.bitcoin-s:bitcoin-s-core_2.13:$vBitcoinS" ::
+      Nil
+    }
+
+    def testParallelism = false
+    def testSandboxWorkingDir = false
+
+  // Dependency versions:
+  def vJsoniter = "2.38.4"
+  def vScalaLogging = "3.9.4"
+  def vLogback = "1.5.20"
+  def vBech32 = "1.0.3"
+  def vJetty = "12.1.4"
+  def vScalatra = "3.1.2"
+  def vJLibTorrent = "2.0.12.7"
+  def vSecp256k1 = "0.21.0"
+
+  def vScalaTest = "3.2.19"
+  def vFlexmark = "0.64.8"
+  def vBitcoinS = "1.9.11"
