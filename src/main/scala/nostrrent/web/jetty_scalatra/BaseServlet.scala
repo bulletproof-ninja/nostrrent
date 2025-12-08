@@ -13,7 +13,6 @@ import java.net.URLDecoder
 trait BaseServlet(replaceLocalhost: Option[String])
 extends ScalatraServlet:
 
-
   protected val log = nostrrent.Logger(this.getClass)
 
   protected def requestURL()(using HttpServletRequest) =

@@ -21,22 +21,24 @@ with AutoCloseable:
 
   private val session = SessionManager() // Configure and start in companion object
 
-  private val CreateFlags = create_flags_t() or_ create_torrent.v2_only
-  private def TorrentBuilder(saveDir: File) =
-    new TorrentBuilder().flags(CreateFlags).path(saveDir)
+  private val CreateHybrid = create_flags_t()
+  private val CreateV2Only = create_flags_t() or_ create_torrent.v2_only
+  private def TorrentBuilder(saveDir: File, hybrid: Boolean) =
+    val flags = if hybrid then CreateHybrid else CreateV2Only
+    new TorrentBuilder().flags(flags).path(saveDir)
 
   def close(): Unit = session.stop()
 
-  def generateBTMHash(torrentID: TorrentID): BTMHash =
+  def generateBTMHash(torrentID: TorrentID, hybrid: Boolean): BTMHash =
     val saveDir = File(workDir, torrentID.toString)
-    val torrent = TorrentBuilder(saveDir).generate()
+    val torrent = TorrentBuilder(saveDir, hybrid).generate()
     val hash = TorrentInfo(torrent.entry.bencode).infoHashV2().toHex()
     BTMHash(hash)
 
 
   def verifyAndSeed(
     torrentID: TorrentID, sig: NostrSignature,
-    webSeedURL: Option[String => URL]): Try[SeedInfo] =
+    hybrid: Boolean, webSeedURL: Option[URL]): Try[SeedInfo] =
     Try:
 
       val saveDir = File(workDir, torrentID.toString).getCanonicalFile()
@@ -50,7 +52,7 @@ with AutoCloseable:
           loadTorrent(torrentFile)
         else
           val torrent =
-            TorrentBuilder(saveDir)
+            TorrentBuilder(saveDir, hybrid)
               .creator(Creator)
               .comment(proof)
               .generate()
@@ -64,12 +66,7 @@ with AutoCloseable:
       if ! sig.verifySignature(info.btmHash()) then
         throw IAE("Signature validation failed")
 
-      webSeedURL.map: makeWebSeedURL =>
-        val seedPath = webSeedPath(torrentID)
-        val relativeSeedPath =
-          if seedPath.isDirectory then seedPath.getName
-          else s"$torrentID/${seedPath.getName}"
-        val webSeedURL = makeWebSeedURL(relativeSeedPath)
+      webSeedURL.foreach: webSeedURL =>
         info.addUrlSeed(webSeedURL.toString)
 
       if ! torrentFile.exists() then
@@ -136,13 +133,12 @@ object JLibTorrent:
     log.info(s"Seeding `${torrentDir}` | ${info.infoHashV2.toHex}")
     session.download(info, torrentDir, null, null, null, SeedFlags)
 
-  private def loadTorrent(torrentFile: File): (TorrentInfo, Array[Byte]) =
+  private def loadTorrent(torrentFile: File): (info: TorrentInfo, torrentBytes: Array[Byte]) =
     val bytes = FileInputStream(torrentFile).readAllBytes()
     TorrentInfo.bdecode(bytes) -> bytes
 
   private def startSession(session: SessionManager, existing: IterableOnce[SeedFile]): Unit =
     import swig.settings_pack.bool_types.*
-    swig.settings_pack.bool_types.no_recheck_incomplete_resume
 
     val settings = SettingsPack()
 
@@ -166,14 +162,15 @@ object JLibTorrent:
         def alert(alert: Alert[?]): Unit = log.info(s"libtorrent: $alert")
         def types(): Array[Int] =
           AlertType.values()
-            .filterNot: at =>
+            .filterNot: at => // Remove noise:
               at == AlertType.UNKNOWN ||
               at == AlertType.SESSION_STATS ||
               at == AlertType.SESSION_STATS_HEADER ||
               at == AlertType.STATE_UPDATE ||
               at.name.startsWith("DHT_") ||
               at.name.startsWith("PEER_") ||
-              at.name.startsWith("LISTEN_")
+              at.name.startsWith("LISTEN_") ||
+              at.name.startsWith("FASTRESUME_")
             .map(_.swig)
 
     session.start(SessionParams(settings))
@@ -185,11 +182,3 @@ object JLibTorrent:
         seed(session, folder, info)
 
   end startSession
-
-  def createTorrent(files: Iterable[File]): TorrentInfo =
-    import com.frostwire.jlibtorrent.swig.*, libtorrent.add_files
-    val fs = file_storage()
-    files.foreach: file =>
-      add_files(fs, file.getCanonicalPath)
-
-    ???

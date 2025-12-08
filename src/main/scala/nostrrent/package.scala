@@ -32,7 +32,7 @@ package object nostrrent:
     def toBytes(): Array[Byte] =
       Toolbox.hexToByteArray(btmHash)
   object BTMHash:
-    final val Regex = "[a-fA-F0-9]{64}".r
+    final val Regex = "[a-f0-9]{64}".r
     def apply(hexHash: String): BTMHash =
       require(
         Regex.matches(hexHash),

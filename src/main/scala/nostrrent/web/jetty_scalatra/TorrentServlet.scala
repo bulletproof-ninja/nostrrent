@@ -20,24 +20,18 @@ class TorrentServlet(
 extends BaseServlet(replaceLocalhost)
 with FileUploadSupport:
 
-  // configureMultipartHandling(MultipartConfig())
   def init(holder: ServletHolder): Unit =
     holder.getRegistration.setMultipartConfig(MultipartConfigElement(TempDir.getAbsolutePath))
 
-  private def handleUpload(files: Iterator[(String, InputStream)]): http.ActionResult =
+  private def handleUpload(hybrid: Boolean, files: Iterator[(String, InputStream)]): http.ActionResult =
     val torrentID = bt.saveFiles(files)
-    val btHashHex = bt.generateBTMHash(torrentID)
+    val btHashHex = bt.generateBTMHash(torrentID, hybrid)
     contentType = MimeType.JSON
     val body = s"""{"id":"$torrentID","hash":"$btHashHex"}"""
     http.Accepted(body)
 
-  post(s"$UploadPath/:filename"):
-    request.getContentLength match
-      case -1 => http.LengthRequired("Content-Length missing")
-      case 0 => http.BadRequest("No content")
-      case _ =>
-        val file = Iterator.single(params("filename") -> request.getInputStream)
-        handleUpload(file)
+  private def isHybrid(using req: HttpServletRequest): Boolean =
+    ! params.toMap.getBoolean("v2only", false)
 
   final val UploadPath = "/upload"
   post(s"$UploadPath/?"):
@@ -50,7 +44,7 @@ with FileUploadSupport:
           .map: item =>
             val filename = item.name
             filename -> item.part.getInputStream
-      handleUpload(files)
+      handleUpload(isHybrid, files)
 
   private final val SeedPath = "/seed"
   private final val TorrentIDParm = ":torrentID"
@@ -82,13 +76,12 @@ with FileUploadSupport:
     seedOptions match
       case Left(failed) => failed
       case Right(Failure(ex)) => throw ex
-      case Right(Success(SeedOptions(nostrSig, exposeHttpServer))) =>
-        val makeWebSeedURL =
+      case Right(Success(SeedOptions(nostrSig, hideHttpServer))) =>
+        val webSeedURL =
           serverPaths.wsPathPrefix
-            .filter(_ => exposeHttpServer)
-            .map: wsPathPrefix =>
-              makeURL(wsPathPrefix, _)
-        bt.verifyAndSeed(torrentID, nostrSig, makeWebSeedURL) match
+            .filterNot(_ => hideHttpServer)
+            .map { makeURL(_, "") }
+        bt.verifyAndSeed(torrentID, nostrSig, isHybrid, webSeedURL) match
           case Failure(tooBig: TorrentTooBig) =>
             http.RequestEntityTooLarge(errMsg(tooBig))
           case Failure(UnknownTorrent(id)) =>
@@ -102,7 +95,7 @@ with FileUploadSupport:
                 .map(makeURL(_, s"$torrentID$TorrentFileExt"))
             val magnet = seedInfo.magnet.copy(dn = None)
             val magnetLink =
-              location.filter(_ => exposeHttpServer)
+              location.filterNot(_ => hideHttpServer)
                 .map(xsURL => magnet.copy(xs = xsURL :: Nil))
                 .getOrElse(magnet)
                 .toString()

@@ -2,28 +2,38 @@ package nostrrent.web
 
 import nostrrent.nostr.NostrSignature
 import scala.util.Try
+import nostrrent.IAE
 
 final case class SeedOptions(
   signature: NostrSignature,
-  exposeHttpServer: Boolean,
+  hideHttpServer: Boolean,
 )
 
 object SeedOptions:
-  import com.github.plokhotnyuk.jsoniter_scala.macros._
-  import com.github.plokhotnyuk.jsoniter_scala.core._
+  import com.github.plokhotnyuk.jsoniter_scala.core.*
+  import com.github.plokhotnyuk.jsoniter_scala.macros.*
 
-  private final case class JSON(pubKey: String, hashSig: String, exposeHttpServer: Boolean = false)
+  private final case class JSON(
+    pubKey: String, hashSig: String,
+    hideHttpServer: Boolean = false,
+  )
 
-  private given JsonValueCodec[JSON] = JsonCodecMaker.make
+  private given JsonValueCodec[JSON] = JsonCodecMaker make CodecMakerConfig
+    .withSkipUnexpectedFields(false)
 
   def fromJSON(json: String): Try[SeedOptions] = Try:
-    val JSON(pubKey, hashSig, exposeHttpServer) = readFromString[JSON](json)
-    SeedOptions(NostrSignature(pubKey, hashSig), exposeHttpServer)
+    val JSON(pubKey, hashSig, hideHttpServer) =
+      try readFromString[JSON](json)
+      catch
+        case jre: JsonReaderException =>
+          val errMsg = jre.getMessage
+          errMsg.indexOf(", offset:") match
+            case -1 => throw jre
+            case idx => throw IAE(errMsg.substring(0, idx), jre)
+
+    SeedOptions(NostrSignature(pubKey, hashSig), hideHttpServer)
 
   def fromFormData(params: Map[String, String]): Try[SeedOptions] = Try:
     val nostrSig = NostrSignature(params("pubKey"), params("hashSig"))
-    val exposeHttpServer = params.get("exposeHttpServer").map(_.toLowerCase).map:
-        case "false" => false
-        case _ => true
-      .getOrElse(false)
-    SeedOptions(nostrSig, exposeHttpServer)
+    val hideHttpServer = params.getBoolean("hideHttpServer", false)
+    SeedOptions(nostrSig, hideHttpServer)

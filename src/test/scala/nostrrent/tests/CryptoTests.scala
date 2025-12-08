@@ -33,8 +33,8 @@ extends AnyFunSuite:
       Using.resource(FileOutputStream(file)): out =>
         out.write(rand.nextBytes(500))
       val id = bt.saveFiles(file.getName -> FileInputStream(file) :: Nil)
-      val btmHash = bt.generateBTMHash(id)
-      val hexHash = btmHash.asInstanceOf[String]
+      val btmHash = bt.generateBTMHash(id, false)
+      val hexHash = btmHash.toString
       val btHashBytes = ByteVector.fromHex(hexHash).get
       assert(btHashBytes.length == 32)
       val signature = keyPair.sign(btHashBytes)

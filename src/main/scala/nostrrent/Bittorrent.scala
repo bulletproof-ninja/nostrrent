@@ -19,9 +19,10 @@ trait Bittorrent:
   /**
     * Generate the Bittorrent multi-hash (v2).
     * @param torrentID The torrent identifier
+    * @param hybrid Hybrid torrent (v1 + v2)
     * @return Hexadecimal BT hash
     */
-  def generateBTMHash(torrentID: TorrentID): BTMHash
+  def generateBTMHash(torrentID: TorrentID, hybrid: Boolean): BTMHash
 
   case class SeedInfo(magnet: MagnetLink, torrentBytes: Array[Byte])
 
@@ -29,13 +30,15 @@ trait Bittorrent:
     * Verify signature and seed collection.
     * @param torrentID identifier
     * @param sig Signature
+    * @param hybrid Create hybrid torrent (v1 + v2)
     * @param webSeedURL Full URL to root of file serving
     * @return Magnet link and torrent info bytes
     */
   def verifyAndSeed(
     torrentID: TorrentID,
     sig: NostrSignature,
-    webSeedURL: Option[String => URL]): Try[SeedInfo]
+    hybrid: Boolean,
+    webSeedURL: Option[URL]): Try[SeedInfo]
 
 
 trait LocalFileSystem(val workDir: File, ioBufferSize: Int)
@@ -77,14 +80,6 @@ extends Bittorrent:
             torrentID
 
     saveFiles(TorrentID.random(), files)
-
-  protected def webSeedPath(torrentID: TorrentID): File =
-    val torrentDir = File(workDir, torrentID.toString)
-    torrentDir.list() match
-      case null => throw sys.error(s"Invalid folder: $torrentDir")
-      case Array(onlyFilename) => File(torrentDir, onlyFilename)
-      case Array() => throw sys.error(s"No files: $torrentDir")
-      case _ => torrentDir
 
   private def writeTorrentContent(
     torrentFolder: File, ioBuffer: Array[Byte] = new Array(ioBufferSize))(
