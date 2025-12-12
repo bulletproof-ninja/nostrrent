@@ -2,7 +2,6 @@ package nostrrent.tests
 
 import scodec.bits.ByteVector
 import nostrrent.nostr.NostrSignature
-import org.bitcoins.crypto.ECPrivateKey
 import nostrrent.BTMHash
 
 @main def signHash(hexHash: String): Unit =

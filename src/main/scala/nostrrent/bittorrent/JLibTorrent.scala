@@ -105,7 +105,7 @@ object JLibTorrent:
 
   private def deleteDir(dir: File): Unit =
     Option(dir.listFiles()).foreach(_.foreach(_.delete()))
-    dir.delete()
+    dir.delete(): Unit
 
   def apply(rootTorrentDir: File, ioBufferSize: Int): JLibTorrent =
     val impl = new JLibTorrent(rootTorrentDir, ioBufferSize)

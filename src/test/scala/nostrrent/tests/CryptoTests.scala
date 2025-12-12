@@ -2,22 +2,17 @@ package nostrrent.tests
 
 import org.scalatest.funsuite.AnyFunSuite
 import scala.util.{ Random => rand }
-import org.bitcoins.crypto.ECPrivateKey
-import org.bitcoins.crypto.CryptoUtil
 import scodec.bits.ByteVector
-import org.bitcoins.crypto.Sha256Digest
 import java.io.File
 import scala.util.Using, Using.Releasable
 import java.io.{ FileInputStream, FileOutputStream }
 import nostrrent.bittorrent.JLibTorrent
 import nostrrent.*, nostr.NostrSignature
 
-
-
 class CryptoTests
 extends AnyFunSuite:
 
-  private given Releasable[File] = _.delete()
+  private given Releasable[File] = _.delete(): Unit
 
   private val bt: Bittorrent = JLibTorrent(TempDir, 1024)
 

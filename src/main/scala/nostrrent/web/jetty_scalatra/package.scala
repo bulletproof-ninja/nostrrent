@@ -27,9 +27,10 @@ package object jetty_scalatra:
     server
 
   private def initSysProps(): Unit =
-    System.setProperty("org.eclipse.jetty.LEVEL", "INFO")
+    System.setProperty("org.eclipse.jetty.LEVEL", "INFO"): Unit
 
   def run(fileSystem: LocalFileSystem, port: Int, replaceLocalhost: Option[String]): Unit =
+    initSysProps()
     val server =
       // val threadPool = VirtualThreadPool()
       // threadPool.setTracking(true)   // Optional: Track virtual threads for dumps
