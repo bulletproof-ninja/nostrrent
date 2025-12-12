@@ -1,22 +1,48 @@
-//| mill-version: 1.1.0-RC3
+//| mill-version: 1.1.0-RC3-53-ff7b4d
 
-import mill.scalalib.*
-import mill.javalib.*
+import mill.*, scalalib.*, javalib.*
+import mill.util.Jvm
 
 object `package`
-extends ScalaModule
-with MavenModule:
+extends SbtModule:
   outer =>
+
+  def publishVersion = "1.0.0"
 
   def scalaVersion = "3.7.4"
   def jvmVersion = "25"
+  def jvmId = s"zulu:$jvmVersion"
 
-  def sourcesFolders =
-    "src/main/scala" ::
-    Nil
+  def jar = Task:
+    val jar = Task.dest / s"nostrrent-${publishVersion}.jar"
+    Jvm.createJar(
+      jar,
+      inputPaths = localClasspath().map(_.path).filter(os.exists),
+      fileFilter = (_, file) => { ! file.toString.endsWith(".local.properties") },
+      manifest = manifest(),
+    )
+    PathRef(jar)
+
+  def zipRuntimeDeps = Task:
+    val deps = resolvedRunMvnDeps().map(_.path)
+    val zipFile = Task.dest / "deps.zip"
+    os.zip(dest = zipFile, sources = deps)
+    zipFile
+
+  def copyRuntimeDeps = Task:
+    resolvedRunMvnDeps().map: dep =>
+      val toFile = Task.dest / s"${dep.path.wrapped.getFileName}"
+      os.copy(from = dep.path, to = toFile)
+      toFile
+
+  def copyTestDeps = Task:
+    val testDeps = test.resolvedRunMvnDeps().toSet -- resolvedRunMvnDeps().toSet
+    testDeps.foreach: dep =>
+      val toFile = Task.dest / s"${dep.path.wrapped.getFileName}"
+      os.copy(from = dep.path, to = toFile)
+    PathRef(Task.dest)
 
   def mvnDeps =
-    mvn"org.scala-lang:scala3-library_3:$scalaVersion" ::
     mvn"com.github.plokhotnyuk.jsoniter-scala:jsoniter-scala-core_3:$vJsoniter" ::
     mvn"com.typesafe.scala-logging:scala-logging_3:$vScalaLogging" ::
     mvn"ch.qos.logback:logback-classic:$vLogback" ::
@@ -38,13 +64,15 @@ with MavenModule:
     Nil
   }
 
-  def javacOptions = super.javacOptions() ++ {
-    "-source" :: jvmVersion ::
-    "-target" :: jvmVersion ::
+  def scalacOptions =
+    "-Wunused:all" ::
+    "-Wvalue-discard" ::
     Nil
-  }
 
-  def jvmId = s"zulu:$jvmVersion"
+  def mandatoryScalacOptions =
+    "-release" :: jvmVersion ::
+    Nil
+
 
   def repositories = super.repositories() ++ {
     "https://dl.frostwire.com/maven" ::
@@ -52,22 +80,14 @@ with MavenModule:
   }
 
   object test
-  extends ScalaTests
+  extends SbtTests
   with TestModule.ScalaTest:
-
-    def sourcesFolders =
-      "src/test/scala" ::
-      Nil
-
     def mvnDeps = outer.mvnDeps() ++ {
       mvn"org.scalatest:scalatest_3:$vScalaTest" ::
       mvn"com.vladsch.flexmark:flexmark-all:$vFlexmark" ::
       mvn"org.bitcoin-s:bitcoin-s-core_2.13:$vBitcoinS" ::
       Nil
     }
-
-    def testParallelism = false
-    def testSandboxWorkingDir = false
 
   // Dependency versions:
   def vJsoniter = "2.38.4"
@@ -78,7 +98,6 @@ with MavenModule:
   def vScalatra = "3.1.2"
   def vJLibTorrent = "2.0.12.7"
   def vSecp256k1 = "0.21.0"
-
   def vScalaTest = "3.2.19"
   def vFlexmark = "0.64.8"
   def vBitcoinS = "1.9.11"
