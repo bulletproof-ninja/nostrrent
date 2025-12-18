@@ -1,0 +1,10 @@
+
+# Ignore all dot-prefixed files and folders
+.*
+
+build/
+bin/
+out/
+
+# Ignore local properties
+src/main/resources/nostrrent.local.properties
