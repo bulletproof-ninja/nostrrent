@@ -1,4 +1,4 @@
-//| mill-version: 1.1.0-RC3-53-ff7b4d
+//| mill-version: 1.1.0-RC3-173-d2f08f
 
 import mill.*, scalalib.*, javalib.*
 import mill.util.Jvm
@@ -7,14 +7,14 @@ object `package`
 extends SbtModule:
   outer =>
 
-  def publishVersion = "1.0.0"
+  def publishVersion = "1.0.0-SNAPSHOT"
 
   def scalaVersion = "3.7.4"
   def jvmVersion = "25"
-  def jvmId = s"zulu:$jvmVersion"
+  def jvmId = s"zulu:${jvmVersion()}"
 
   def jar = Task:
-    val jar = Task.dest / s"nostrrent-${publishVersion}.jar"
+    val jar = Task.dest / s"nostrrent-$publishVersion.jar"
     Jvm.createJar(
       jar,
       inputPaths = localClasspath().map(_.path).filter(os.exists),
@@ -70,7 +70,7 @@ extends SbtModule:
     Nil
 
   def mandatoryScalacOptions =
-    "-release" :: jvmVersion ::
+    "-release" :: jvmVersion() ::
     Nil
 
 
@@ -94,7 +94,7 @@ extends SbtModule:
   def vScalaLogging = "3.9.4"
   def vLogback = "1.5.20"
   def vBech32 = "1.0.3"
-  def vJetty = "12.1.4"
+  def vJetty = "12.1.5"
   def vScalatra = "3.1.2"
   def vJLibTorrent = "2.0.12.7"
   def vSecp256k1 = "0.21.0"

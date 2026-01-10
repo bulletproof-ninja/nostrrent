@@ -1,9 +1,15 @@
 
 import java.io.File
 import scala.util.Random
-import java.nio.ByteBuffer
+import java.time.{ Instant, ZoneOffset }
+import java.time.format.DateTimeFormatter
+import java.util.Locale
+import nostrrent.bittorrent.BTHash
+import scala.collection.concurrent.TrieMap
 
 package object nostrrent:
+
+  def Option[O, I <: O | Null](i: I): Option[O] = scala.Option(i.asInstanceOf[O])
 
   def Logger(clz: Class[?]) =
     val name =
@@ -19,10 +25,11 @@ package object nostrrent:
   final val TorrentFileExt = ".torrent"
 
   @inline
-  def IAE(msg: String, cause: Throwable = null) = new IllegalArgumentException(msg, cause)
+  def throwIAE(msg: String, cause: Throwable = null) =
+    throw new IllegalArgumentException(msg, cause)
 
   extension[T](opt: Option[T])
-    def ||[B >: T](orElse: => B): B = opt.getOrElse(orElse)
+    inline def ||[B >: T](orElse: => B): B = opt.getOrElse(orElse)
 
   val TempDir = new File(sys.props("java.io.tmpdir"))
   log.info(s"Temp dir: $TempDir")
@@ -31,30 +38,40 @@ package object nostrrent:
   extension(btmHash: BTMHash)
     def toBytes(): Array[Byte] =
       Toolbox.hexToByteArray(btmHash)
+    def asBTHash: BTHash =
+      BTHash(btmHash)
+
   object BTMHash:
-    final val Regex = "[a-f0-9]{64}".r
+    final val Regex = "[a-fA-F0-9]{64}".r
     def apply(hexHash: String): BTMHash =
       require(
         Regex.matches(hexHash),
         s"Must be 64 char hex: $hexHash")
-      hexHash
+      hexHash.toLowerCase
 
-  /** 20 char identifier. */
-  opaque type TorrentID = String
-  object TorrentID:
-    import org.ngengine.bech32.*
-    private val Regex = "^[02-9ac-hj-np-z]{20}$".r
-    private final val Bech32Prefix = "nostrrent"
-    val random: () => TorrentID =
-      val PrefixBytes = Bech32Prefix.getBytes()
-      () => Bech32.bech32Encode(
-          PrefixBytes,
-          ByteBuffer.wrap(Random.nextBytes(12))
-        )
-        .drop(Bech32Prefix.length + 1)
-        .dropRight(6) // Remove checksum
-    def apply(unqualifiedBech32: String): TorrentID =
-      require(
-        Regex.matches(unqualifiedBech32),
-        s"Invalid identifier: $unqualifiedBech32")
-      unqualifiedBech32
+  /** Torrent identifier. */
+  opaque type NostrrentID = String
+  extension(id: NostrrentID)
+    def locked[R](thunk: => R): R =
+      NostrrentID.lock(id)(thunk).getOrElse:
+        throw IllegalStateException(s"Torrent currently being processed")
+  object NostrrentID:
+    private final val LockMap = TrieMap[NostrrentID, Unit]()
+    private final val RandoLen = 6
+    private val TimeFormat = DateTimeFormatter.ofPattern("uuuuMMdd-HHmm-", Locale.ROOT).withZone(ZoneOffset.UTC)
+    private val Regex = s"^\\d{8}-\\d{4}-[A-Z]{$RandoLen}$$".r
+    def apply(): NostrrentID =
+      val sb = java.lang.StringBuilder(TimeFormat.format(Instant.now))
+      (1 to RandoLen).foreach(_ => sb.append { Random.between('A', 'Z'+1).toChar } )
+      sb.toString
+    def apply(maybeID: String): NostrrentID =
+      if unapply(maybeID) then maybeID
+      else throwIAE(s"Invalid identifier: $maybeID")
+    def unapply(maybeID: String): Boolean =
+      Regex matches maybeID
+    def lock[R](id: NostrrentID)(thunk: => R): Option[R] =
+      LockMap.putIfAbsent(id, ()) match
+        case None =>
+          try Some(thunk)
+          finally LockMap.remove(id): Unit
+        case Some(_) => None

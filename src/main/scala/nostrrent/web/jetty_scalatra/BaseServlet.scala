@@ -1,6 +1,6 @@
 package nostrrent.web.jetty_scalatra
 
-import org.scalatra.*
+import org.{scalatra => http}, http.ScalatraServlet
 import scala.util.control.NonFatal
 import java.time.format.DateTimeParseException
 import jakarta.servlet.ServletException
@@ -45,18 +45,20 @@ extends ScalatraServlet:
 
   notFound:
     log(s"Not found: ${request.getRequestURL}")
-    NotFound("N/A", Map("Connection" -> "close"))
+    http.NotFound("N/A", Map("Connection" -> "close"))
 
   error:
     case e @ (
       _: IllegalArgumentException |
       _: DateTimeParseException) =>
+      http.BadRequest(errMsg(e))
 
-      BadRequest(errMsg(e))
+    case e: IllegalStateException =>
+      http.Conflict(errMsg(e))
 
     case e: ServletException =>
-      BadRequest(errMsg(e.getCause))
+      http.BadRequest(errMsg(e.getCause))
 
     case NonFatal(th) =>
       log("Non-fatal exception", th)
-      InternalServerError()
+      http.InternalServerError()

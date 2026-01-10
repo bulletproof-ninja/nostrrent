@@ -8,6 +8,8 @@ import scala.util.Using, Using.Releasable
 import java.io.{ FileInputStream, FileOutputStream }
 import nostrrent.bittorrent.JLibTorrent
 import nostrrent.*, nostr.NostrSignature
+import nostrrent.bittorrent.Version
+import nostrrent.bittorrent.BTHash
 
 class CryptoTests
 extends AnyFunSuite:
@@ -19,16 +21,16 @@ extends AnyFunSuite:
   private val keyPair = NostrKeyPair()
 
   test("Signature verification"):
-    val torrentID = TorrentID.random()
-    val torrentDir = File(TempDir, torrentID.toString)
+    val id = NostrrentID()
+    val torrentDir = File(TempDir, id.toString)
     assert(torrentDir.mkdir() == true)
     Using.resource(File.createTempFile("nostrrent-", ".bin", torrentDir)): file =>
       println(s"Temp file: ${file.getAbsoluteFile}")
       file.deleteOnExit() // In case release fails
       Using.resource(FileOutputStream(file)): out =>
         out.write(rand.nextBytes(500))
-      val id = bt.saveFiles(file.getName -> FileInputStream(file) :: Nil)
-      val btmHash = bt.generateBTMHash(id, false)
+      val id = bt.saveFiles((file.getName -> FileInputStream(file) :: Nil).iterator, None)
+      val btmHash = bt.generateBTHash(id, Version.v2)
       val hexHash = btmHash.toString
       val btHashBytes = ByteVector.fromHex(hexHash).get
       assert(btHashBytes.length == 32)
@@ -44,5 +46,5 @@ extends AnyFunSuite:
       val wrongHexHash =
         val array = btHashBytes.toArray
         array(0) = (~array(0)).asInstanceOf[Byte]
-        BTMHash(ByteVector(array).toHex)
+        BTHash(ByteVector(array).toHex)
       assert(nostrSig.verifySignature(wrongHexHash) == false)

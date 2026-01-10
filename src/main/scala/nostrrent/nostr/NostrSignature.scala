@@ -1,10 +1,9 @@
 package nostrrent.nostr
 
-import nostrrent.Toolbox.hexToByteArray
+import nostrrent.*, Toolbox.hexToByteArray
 import org.ngengine.bech32.Bech32
 import java.nio.ByteBuffer
-import nostrrent.IAE
-import nostrrent.BTMHash
+import nostrrent.bittorrent.BTHash
 
 /**
   * Nostr signature.
@@ -19,8 +18,8 @@ final case class NostrSignature(npub: String, hashSigHex: String):
 
   def hashSigBytes = hexToByteArray(hashSigHex)
 
-  def verifySignature(btmHash: BTMHash): Boolean =
-    nostrrent.nostr.verifySignature(btmHash, this)
+  def verifySignature(btHash: BTHash): Boolean =
+    nostrrent.nostr.verifySignature(btHash, this)
 
 object NostrSignature:
   private val npubValidation = """^npub1[02-9ac-hj-np-z]{58}$""".r
@@ -41,5 +40,5 @@ object NostrSignature:
     val presumedNpub = pubKey.length match
       case 63 => pubKey
       case 64 => hexToNpub(pubKey)
-      case _ => throw IAE(s"Invalid public key: $pubKey")
+      case _ => throwIAE(s"Invalid public key: $pubKey")
     new NostrSignature(presumedNpub, hashSigHex)

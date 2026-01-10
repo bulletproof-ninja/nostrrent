@@ -1,0 +1,18 @@
+package nostrrent
+
+package object bittorrent:
+  final val BTHashValidation = "^[0-9A-Fa-f]{40}$|^[0-9A-Fa-f]{64}$".r
+  opaque type BTHash = String
+  extension(btHash: BTHash)
+    def toBytes(): Array[Byte] = Toolbox.hexToByteArray(btHash)
+    def len: 40 | 64 = btHash.length match { case len: (40 | 64) => len }
+    def urn: String = btHash.len match
+      case 40 => s"urn:btih:$btHash"
+      case 64 => s"urn:btmh:1220$btHash"
+
+  object BTHash:
+    def apply(hex: String): BTHash =
+      if unapply(hex) then hex.toLowerCase
+      else throwIAE(s"Invalid hash string: $hex")
+    def unapply(hex: String): Boolean =
+      BTHashValidation matches hex

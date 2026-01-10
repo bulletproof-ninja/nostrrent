@@ -2,69 +2,71 @@ package nostrrent.bittorrent
 
 import nostrrent.*, nostr.NostrSignature
 import com.frostwire.jlibtorrent.{
+  TorrentHandle, AlertListener, Sha256Hash,
   SessionManager, SessionParams, SettingsPack,
   TorrentBuilder, TorrentInfo,
-  swig
+  swig, alerts,
 }
-import java.io.{ File, FileInputStream, ByteArrayInputStream }
-import scala.util.Try
-import java.net.URL
-import com.frostwire.jlibtorrent.AlertListener
-import com.frostwire.jlibtorrent.alerts.{ Alert, AlertType }
-import com.frostwire.jlibtorrent.swig.{ create_torrent, create_flags_t }
+import alerts.{ Alert, AlertType, MetadataReceivedAlert }
+import swig.{ create_torrent, create_flags_t }
 
-class JLibTorrent(rootTorrentDir: File, ioBufferSize: Int)
+import java.io.{ File, FileInputStream, ByteArrayInputStream }
+import java.net.URL
+import scala.util.{ Try, Using }
+import scala.util.control.NonFatal
+import com.frostwire.jlibtorrent.Sha1Hash
+
+class JLibTorrent private(rootTorrentDir: File, ioBufferSize: Int)
 extends nostrrent.LocalFileSystem(rootTorrentDir, ioBufferSize)
 with AutoCloseable:
-
   import JLibTorrent.*
 
   private val session = SessionManager() // Configure and start in companion object
 
-  private val CreateHybrid = create_flags_t()
-  private val CreateV2Only = create_flags_t() or_ create_torrent.v2_only
-  private def TorrentBuilder(saveDir: File, hybrid: Boolean) =
-    val flags = if hybrid then CreateHybrid else CreateV2Only
-    new TorrentBuilder().flags(flags).path(saveDir)
+  private val CreateFlags = Map(
+    Version.v1 -> { create_flags_t() or_ create_torrent.v1_only },
+    Version.v2 -> { create_flags_t() or_ create_torrent.v2_only },
+    Version.hybrid -> create_flags_t(),
+  )
+
+  private def TorrentBuilder(path: File, version: bittorrent.Version) =
+    new TorrentBuilder().flags(CreateFlags(version)).path(path)
 
   def close(): Unit = session.stop()
 
-  def generateBTMHash(torrentID: TorrentID, hybrid: Boolean): BTMHash =
-    val saveDir = File(workDir, torrentID.toString)
-    val torrent = TorrentBuilder(saveDir, hybrid).generate()
-    val hash = TorrentInfo(torrent.entry.bencode).infoHashV2().toHex()
-    BTMHash(hash)
+  def generateBTHash(id: NostrrentID, version: bittorrent.Version): BTHash =
+    val path = File(workDir, id.toString)
+    val torrent = TorrentBuilder(path, version).generate()
+    val hash = TorrentInfo(torrent.entry.bencode)
+    hash.btHash
 
-
-  def verifyAndSeed(
-    torrentID: TorrentID, sig: NostrSignature,
-    hybrid: Boolean, webSeedURL: Option[URL]): Try[SeedInfo] =
+  def publishTorrent(
+    id: NostrrentID, sig: Option[NostrSignature],
+    version: bittorrent.Version, webSeedURL: Option[URL]) =
     Try:
-
-      val saveDir = File(workDir, torrentID.toString).getCanonicalFile()
-      if ! saveDir.isDirectory then throw UnknownTorrent(torrentID)
-
-      val torrentFile = File(rootTorrentDir, s"$torrentID$TorrentFileExt")
-      val proof = s"${sig.npub}:${sig.hashSigHex}"
+      val torrentDir = TorrentDir(rootTorrentDir, id)
+      if ! torrentDir.exists() then throw UnknownTorrent(id)
+      val torrentFile = torrentDir.torrentFile
+      val proof = sig.map(Proof.toComment)
 
       val (info, torrentBytes) =
         if torrentFile.exists() then
           loadTorrent(torrentFile)
         else
-          val torrent =
-            TorrentBuilder(saveDir, hybrid)
-              .creator(Creator)
-              .comment(proof)
-              .generate()
+          val tb = TorrentBuilder(torrentDir.path, version).creator(Creator)
+          proof.foreach(tb.comment)
+          val torrent = tb.generate()
           val torrentBytes = torrent.entry.bencode
           TorrentInfo.bdecode(torrentBytes) -> torrentBytes
 
+      val btHash = info.btHash
+
       if torrentBytes.length > MaxTorrentFileSize then
         throw TorrentTooBig(torrentBytes.length)
-      if info.comment != proof then
+      if proof.exists(_ != info.comment) then
         throw IllegalStateException("Signature mismatch")
-      if ! sig.verifySignature(info.btmHash()) then
-        throw IAE("Signature validation failed")
+      if sig.exists(sig => ! sig.verifySignature(btHash)) then
+        throwIAE("Signature validation failed")
 
       webSeedURL.foreach: webSeedURL =>
         info.addUrlSeed(webSeedURL.toString)
@@ -74,11 +76,60 @@ with AutoCloseable:
           ByteArrayInputStream(info.bencode),
           torrentFile)
 
-      // if session.find(info) == null then // Race condition, but no obvious way to avoid
-      JLibTorrent.seed(session, saveDir, info)
-
+      JLibTorrent.seed(session, torrentDir, info)
       val magnet = MagnetLink.parse(info.makeMagnetUri())
-      SeedInfo(magnet, torrentBytes)
+      magnet -> torrentBytes
+
+  def seedTorrent(torrentBytes: Array[Byte]): Option[Float] =
+    val info = try TorrentInfo.bdecode(torrentBytes) catch
+      case NonFatal(th) => throwIAE("Invalid torrent", th)
+    if ! info.isValid() then throwIAE("Invalid torrent")
+    session.find(info) match
+      case handle: TorrentHandle => Some:
+        handle.status.progress()
+      case null =>
+        val btHash = info.btHash
+        val proof = Proof.fromComment(info.comment)
+        if proof.exists(sig => ! sig.verifySignature(btHash)) then
+          throwIAE("Signature verification failed")
+        val torrentDir = TorrentDir(rootTorrentDir, btHash).ensurePath()
+        writeNewFile(
+          ByteArrayInputStream(info.bencode),
+          torrentDir.torrentFile)
+        JLibTorrent.seed(session, torrentDir, info); None
+
+  def seedTorrent(btHash: BTHash): Option[Float] =
+    val torrent: (handle: TorrentHandle, hash: (Sha1Hash | Sha256Hash)) =
+      btHash.len match
+        case 40 =>
+          val hash = Sha1Hash(btHash.toString)
+          session.find(hash) -> hash
+        case 64 =>
+          val hash = Sha256Hash(btHash.toString)
+          (session.find(hash) -> hash)
+
+    torrent.handle match
+      case handle: TorrentHandle => Some:
+        handle.status.progress()
+      case null =>
+        val torrentDir = TorrentDir(rootTorrentDir, btHash).ensurePath()
+        session.addListener:
+          new AlertListener:
+            def types() = new Array(AlertType.METADATA_RECEIVED.swig)
+            def alert(x: Alert[?]) = x match
+              case alert: MetadataReceivedAlert =>
+                val info = alert.handle.torrentFile
+                val isMatch = torrent.hash match
+                  case sha1: Sha1Hash => sha1 == info.infoHashV1
+                  case sha256: Sha256Hash => sha256 == info.infoHashV2
+                if isMatch then
+                  session.removeListener(this)
+                  writeNewFile(
+                    ByteArrayInputStream(info.bencode),
+                    torrentDir.torrentFile)
+
+        val magnet = MagnetLink(btHash)
+        JLibTorrent.seed(session, torrentDir, magnet); None
 
 end JLibTorrent
 
@@ -88,19 +139,18 @@ object JLibTorrent:
   private val log = Logger(this.getClass)
 
   final val Creator = "Nostrrent"
-  final val MaxTorrentFileSize = 10*1024*1024
 
   extension[T](fileFlags: swig.file_flags_t)
     def notPadding: Boolean = ! fileFlags.and_(FLAG_PAD_FILE).nonZero()
 
-  extension (info: TorrentInfo)
-    def btmHash(): BTMHash =
-      BTMHash(info.infoHashV2().toHex)
+  extension(info: TorrentInfo)
+    def btHash: BTHash = BTHash:
+      Option(info.infoHashV2).map(_.toHex) || info.infoHashV1.toHex
 
-  private case class SeedFile(torrentFile: File, torrentFolder: File):
+  private case class SeedFile(torrentFile: File, torrentDir: TorrentDir):
     assert(torrentFile.isFile)
-    assert(torrentFolder.isDirectory)
-    assert(torrentFile.getName.startsWith(torrentFolder.getName))
+    assert(torrentDir.path.isDirectory)
+    assert(torrentFile.getName.startsWith(torrentDir.path.getName))
     assert(torrentFile.getName.endsWith(TorrentFileExt))
 
   private def deleteDir(dir: File): Unit =
@@ -112,29 +162,46 @@ object JLibTorrent:
     val seedFolders =
       rootTorrentDir.listFiles(_.isDirectory)
         .flatMap: folder =>
-          val torrentFile = File(rootTorrentDir, s"${folder.getName}$TorrentFileExt")
-          if torrentFile.isFile then
-            Some(SeedFile(torrentFile, folder))
-          else // Cleanup:
-            deleteDir(torrentFile)
-            deleteDir(folder)
-            None
+          val torrentDir = folder.getName match
+            case id @ NostrrentID() => Some:
+              TorrentDir.Nostrrent(NostrrentID(id), folder)
+            case hash @ BTHash() => Some:
+              TorrentDir.External(BTHash(hash), folder)
+            case _ => None
+          torrentDir.flatMap: torrentDir =>
+            val torrentFile = File(rootTorrentDir, s"${folder.getName}$TorrentFileExt")
+            if torrentFile.isFile then
+              Some(SeedFile(torrentFile, torrentDir))
+            else // Cleanup:
+              deleteDir(torrentFile)
+              deleteDir(folder)
+              None
         .toList
     startSession(impl.session, seedFolders)
     impl
 
   import com.frostwire.jlibtorrent.{ TorrentFlags => tf }
-  private final val SeedFlags =
+  private final val CompleteTorrentFlags =
     tf.SEED_MODE or_
-    tf.SHARE_MODE or_
     tf.UPLOAD_MODE
+  private final val UnknownStatusFlags =
+    tf.SEQUENTIAL_DOWNLOAD
 
-  private def seed(session: SessionManager, torrentDir: File, info: TorrentInfo): Unit =
-    log.info(s"Seeding `${torrentDir}` | ${info.infoHashV2.toHex}")
-    session.download(info, torrentDir, null, null, null, SeedFlags)
+  private def seed(session: SessionManager, torrentDir: TorrentDir, info: TorrentInfo): Unit =
+    val infoHash = info.infoHashV2() match
+      case null => info.infoHashV1().toHex()
+      case v2 => v2.toHex()
+    log.info(s"Seeding $infoHash: `${torrentDir.path}` from `${torrentDir.saveDir}`")
+    val seedFlags = torrentDir match
+      case _: TorrentDir.Nostrrent => CompleteTorrentFlags
+      case _ => UnknownStatusFlags
+    session.download(info, torrentDir.saveDir, null, null, null, seedFlags)
+
+  private def seed(session: SessionManager, torrentDir: TorrentDir.External, magnet: MagnetLink): Unit =
+    session.download(magnet.toString, torrentDir.saveDir, UnknownStatusFlags)
 
   private def loadTorrent(torrentFile: File): (info: TorrentInfo, torrentBytes: Array[Byte]) =
-    val bytes = FileInputStream(torrentFile).readAllBytes()
+    val bytes = Using.resource(FileInputStream(torrentFile)) { _.readAllBytes() }
     TorrentInfo.bdecode(bytes) -> bytes
 
   private def startSession(session: SessionManager, existing: IterableOnce[SeedFile]): Unit =
@@ -162,6 +229,7 @@ object JLibTorrent:
         def alert(alert: Alert[?]): Unit = log.info(s"libtorrent: $alert")
         def types(): Array[Int] =
           AlertType.values()
+            .toSet
             .filterNot: at => // Remove noise:
               at == AlertType.UNKNOWN ||
               at == AlertType.SESSION_STATS ||
@@ -171,14 +239,22 @@ object JLibTorrent:
               at.name.startsWith("PEER_") ||
               at.name.startsWith("LISTEN_") ||
               at.name.startsWith("FASTRESUME_")
+            .concat: // Ensure specific alerts:
+              Set(
+                AlertType.DHT_STATS,
+                AlertType.PEER_BLOCKED,
+                AlertType.DHT_IMMUTABLE_ITEM,
+                AlertType.DHT_MUTABLE_ITEM,
+              )
             .map(_.swig)
+            .toArray
 
     session.start(SessionParams(settings))
 
     // Start seeding existing torrents:
     existing.iterator.foreach:
-      case SeedFile(torrentFile, folder) =>
-        val (info, _) = loadTorrent(torrentFile)
-        seed(session, folder, info)
+      case SeedFile(torrentFile, dir) =>
+        val info = loadTorrent(torrentFile).info
+        seed(session, dir, info)
 
   end startSession

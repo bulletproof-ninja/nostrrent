@@ -8,7 +8,7 @@ object Toolbox:
     if char >= '0' && char <= '9' then (char - '0')
     else if (char >= 'a' && char <= 'f') then (char - ('a' - 10))
     else if (char >= 'A' && char <= 'F') then (char - ('A' - 10))
-    else throw IAE(s"Invalid hex char: $char")
+    else throwIAE(s"Invalid hex char: $char")
 
   def hexToByteArray(hex: String): Array[Byte] =
     require(hex.length % 2 == 0, s"Must be byte aligned hexadecimal, was ${hex.length} hex chars")

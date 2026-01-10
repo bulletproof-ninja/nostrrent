@@ -4,8 +4,9 @@ import org.eclipse.jetty.ee10.servlet.ResourceServlet
 import jakarta.servlet.http.{ HttpServletRequest, HttpServletResponse }
 import java.io.File
 import org.eclipse.jetty.ee10.servlet.ServletContextHandler
+import org.eclipse.jetty.util.resource.{ ResourceFactory, Resource }
 
-abstract class AbstractFileServer(workDir: File)
+abstract class AbstractFileServer(getBase: ResourceFactory => Resource)
 extends ResourceServlet:
 
   def path: String
@@ -13,7 +14,6 @@ extends ResourceServlet:
   protected def servletConfigParms: Map[String, Any] =
     Map(
       "acceptRanges" -> true,
-      "baseResource" -> workDir,
       "cacheControl" -> "public, immutable",
       "cacheValidationTime" -> -1,
       "dirAllowed" -> false, // We *could* override this for the collection dirs and serve JSON
@@ -22,13 +22,15 @@ extends ResourceServlet:
     )
 
   def configure(ctx: ServletContextHandler): Unit =
+    val rf = ResourceFactory.of(ctx)
+    val base: Resource = getBase(rf)
+    ctx.setBaseResource(base)
     val holder = ctx.addServlet(this, s"$path/*")
     servletConfigParms.foreach: (key, value) =>
       holder.setInitParameter(key, String.valueOf(value))
 
   override def init(): Unit =
     super.init()
-    log(s"Serving files from: $workDir")
 
   /**
    * Make 404 into 403 to match directory listing attempt.
@@ -36,3 +38,7 @@ extends ResourceServlet:
    */
   override def doNotFound(req: HttpServletRequest, res: HttpServletResponse, encodedPathInContext: String): Unit =
     res.sendError(HttpServletResponse.SC_FORBIDDEN)
+
+object AbstractFileServer:
+  def fileSystemDir(workDir: File)(rf: ResourceFactory): Resource =
+    rf.newResource(workDir.toPath)

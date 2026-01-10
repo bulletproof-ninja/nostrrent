@@ -3,6 +3,7 @@ package nostrrent
 import fr.acinq.secp256k1.{ Secp256k1, Secp256k1Exception }
 import org.ngengine.bech32.{ Bech32, Bech32Exception }
 import nostrrent.*
+import nostrrent.bittorrent.*
 
 package object nostr:
 
@@ -14,14 +15,12 @@ package object nostr:
     bb.get(array)
     array
 
-  protected[nostr] def verifySignature(btmHash: BTMHash, nostrSig: NostrSignature): Boolean =
+  protected[nostr] def verifySignature(btHash: BTHash, nostrSig: NostrSignature): Boolean =
     try
       val npubBytes = decodeNpub(nostrSig.npub)
-      val hashBytes = btmHash.toBytes()
-      assert(hashBytes.length == 32)
+      val hashBytes = btHash.toBytes()
       val sigBytes = nostrSig.hashSigBytes
-      assert(sigBytes.length == 64, s"Signature must be 64 bytes, was ${sigBytes.length}")
       secp.verifySchnorr(sigBytes, hashBytes, npubBytes)
     catch
       case th: (Secp256k1Exception | Bech32Exception) =>
-        throw IAE(th.getMessage, th)
+        throwIAE(th.getMessage, th)

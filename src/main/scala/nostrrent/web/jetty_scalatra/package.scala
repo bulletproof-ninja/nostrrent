@@ -6,10 +6,18 @@ import org.eclipse.jetty.server.HttpConfiguration
 import org.eclipse.jetty.server.HttpConnectionFactory
 import org.eclipse.jetty.ee10.servlet.ServletContextHandler
 import nostrrent.*
+import org.scalatra.util.MultiMapHeadView
 
 package object jetty_scalatra:
 
   private val log = Logger(this.getClass)
+
+  extension(params: MultiMapHeadView[String, String])
+    def getBoolean(name: String, default: Boolean): Boolean =
+      params.get(name).map(_.toLowerCase).map:
+        case "false" => false
+        case _ => true
+      .getOrElse(default)
 
   private def httpConf =
     val conf = HttpConfiguration()

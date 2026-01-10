@@ -1,29 +1,65 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8">
-  <title>Nostrrent API</title>
-  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>OpenAPI Renderer Switcher</title>
   <style>
-    body { margin:0; }
-    .topbar { display: none; }
+    body { margin:0; font-family: system-ui, sans-serif; }
+    #controls {
+      padding: 1rem;
+      background: #f8f9fa;
+      border-bottom: 1px solid #ddd;
+      display: flex;
+      gap: 1rem;
+      flex-wrap: wrap;
+      align-items: center;
+    }
+    #viewer { height: calc(100vh - 60px); }
+    .viewer-reset {
+      all: unset;                  /* aggressive reset (works in modern browsers) */
+      display: block;
+      height: calc(100vh - 60px);
+      overflow: auto;
+      background: white;           /* or transparent */
+      color: initial;
+    }
+    select, button { padding: 0.5rem 1rem; }
   </style>
+
+  <!-- Load renderers (latest stable as of Jan 2026) -->
+  <!-- Swagger UI -->
+  <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css"/>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+
+  <!-- Redoc -->
+  <script src="https://unpkg.com/redoc@next/bundles/redoc.standalone.js"></script>
+
+  <!-- Scalar -->
+  <script src="https://cdn.jsdelivr.net/npm/@scalar/api-reference"></script>
+  <!-- RapiDoc -->
+  <script src="https://unpkg.com/rapidoc@latest/dist/rapidoc-min.js"></script>
+
+  <!-- CoffeeScript compiler -->
+  <script src="https://cdn.jsdelivr.net/npm/coffeescript@2.7.0/lib/coffeescript-browser-compiler-legacy/coffeescript.min.js"></script>
 </head>
 <body>
 
-  <div id="swagger-ui"></div>
+  <div id="controls">
+    <label>API renderer:</label>
+    <select id="renderer-select">
+      <option disabled>Pick one…</option>
+      <option value="swagger" selected>Swagger UI</option>
+      <option value="redoc">Redoc</option>
+      <option value="scalar">Scalar</option>
+      <option value="rapidoc">RapiDoc</option>
+    </select>
 
-  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
-  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-standalone-preset.js"></script>
-  <script>
-    window.onload = () => {
-      window.ui = SwaggerUIBundle({
-        url: './openapi.yaml',          // served by Jetty as static resource
-        dom_id: '#swagger-ui',
-        presets: [SwaggerUIBundle.presets.apis, SwaggerUIStandalonePreset],
-        layout: "StandaloneLayout"
-      });
-    };
-  </script>
+  </div>
+
+  <div id="viewer"></div>
+
+  <script type="text/coffeescript" src="index.coffee"></script>
+
 </body>
 </html>

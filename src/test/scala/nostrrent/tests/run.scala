@@ -2,11 +2,13 @@ package nostrrent.tests
 
 import scodec.bits.ByteVector
 import nostrrent.nostr.NostrSignature
-import nostrrent.BTMHash
+import nostrrent.{ BTMHash, NostrKeyPair }
 
-@main def signHash(hexHash: String): Unit =
+@main def signHash(hexHash: String, nsec: String*): Unit =
   require(BTMHash.Regex.matches(hexHash), s"Invalid BTM hex hash: $hexHash")
-  val keys = nostrrent.NostrKeyPair()
+  val keys = nsec match
+    case Seq() => NostrKeyPair()
+    case Seq(nsec) => NostrKeyPair(nsec)
   val btHashBytes = ByteVector.fromHex(hexHash).get
   val signature = keys.sign(btHashBytes)
   assert(signature.bytes.length == 64)

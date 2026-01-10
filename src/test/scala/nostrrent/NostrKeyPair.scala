@@ -8,8 +8,17 @@ import org.bitcoins.crypto.SchnorrDigitalSignature
 import fr.acinq.secp256k1.Secp256k1
 import java.util.Arrays
 
-class NostrKeyPair(
-  privKey: ECPrivateKey = ECPrivateKey()):
+object NostrKeyPair:
+
+  def apply(privKey: ECPrivateKey = ECPrivateKey()): NostrKeyPair =
+    new NostrKeyPair(privKey)
+
+  def apply(nsecKey: String): NostrKeyPair =
+    val privKeyBB = Bech32.bech32Decode(nsecKey)
+    val privKey = ECPrivateKey(ByteVector(privKeyBB))
+    new NostrKeyPair(privKey)
+
+class NostrKeyPair(privKey: ECPrivateKey):
 
   private val secp256k1 = Secp256k1.get
 
@@ -20,14 +29,8 @@ class NostrKeyPair(
     ByteBuffer.wrap(pubkey),
   )
 
-  if Arrays.equals(pubkey, decodeNpub(npub)) then println("Bech32 decode works!")
+  if Arrays.equals(pubkey, decodeBech32(npub)) then println("Bech32 decode works!")
   else sys.error("Bech32 decode problem")
-
-  private def decodeNpub(npub: String): Array[Byte] =
-    val bb = Bech32.bech32Decode(npub)
-    val array = new Array[Byte](bb.capacity)
-    bb.get(array)
-    array
 
 
   def sign(bytes: Array[Byte]): SchnorrDigitalSignature =
@@ -41,3 +44,9 @@ class NostrKeyPair(
     if secp256k1.verifySchnorr(signature.bytes.toArray, dataArray, pubkey) then println("Signature validated!")
     else sys.error("Signature validation failed!")
     signature
+
+  private def decodeBech32(bech32: String): Array[Byte] =
+    val bb = Bech32.bech32Decode(bech32)
+    val array = new Array[Byte](bb.capacity)
+    bb.get(array)
+    array

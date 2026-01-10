@@ -1,15 +1,13 @@
 package nostrrent.bittorrent
 
 import java.net.URL
-import nostrrent.IAE
+import nostrrent.*
 import scala.util.matching.Regex
 import java.net.URI
-import nostrrent.BTMHash
 
 final case class MagnetLink(
-  /** SHA-256 hex hash. */
-  btmHash: BTMHash,
-  btiHash: Option[String],
+  btHash: BTHash,
+  btmHash: Option[BTMHash] = None,
   dn: Option[String] = None,
   ws: List[URL] = Nil,
   xs: List[URL] = Nil,
@@ -23,9 +21,10 @@ final case class MagnetLink(
       rawValues.foreach: rawValue =>
         str += '&' ++= parmName += '='
         str ++= urlEncode(rawValue.toString)
-    str ++= "magnet:?xt=urn:btmh:1220" ++= btmHash.toString
-    btiHash.foreach: btiHash =>
-      str += '&' ++= "xt=urn:btih:" ++= btiHash
+    str ++= "magnet:?xt=" ++= btHash.urn
+    btmHash.foreach: btmHash =>
+      assert(btHash.len == 40) // If btmHash is present, then btHash must be SHA-1
+      str ++= "&xt=" ++= btmHash.asBTHash.urn
     append("dn", dn)
     append("ws", ws)
     append("xs", xs)
@@ -37,12 +36,15 @@ object MagnetLink:
   import java.net.{ URLEncoder, URLDecoder }
   import java.nio.charset.StandardCharsets.UTF_8
 
-  private val ExtractSha1Hex = s"[?&]xt=urn:btih:([a-f0-9]{40})".r
   private val ExtractSha256Hex = s"[?&]xt=urn:btmh:1220(${BTMHash.Regex})".r
+  private val ExtractSha1Hex = s"[?&]xt=urn:btih:([a-fA-F0-9]{40})".r
   private val ExtractDN = s"[?&]dn=([^&]+)".r
   private val ExtractWS = s"[?&]ws=([^&]+)".r
   private val ExtractXS = s"[?&]xs=([^&]+)".r
   private val ExtractTR = s"[?&]xs=([^&]+)".r
+
+  extension(regex: Regex)
+    def firstMatch(in: String): Option[String] = regex.findFirstMatchIn(in).map(_.group(1).toLowerCase)
 
   private def urlEncode(raw: String): String =
     URLEncoder.encode(raw, UTF_8)
@@ -58,15 +60,12 @@ object MagnetLink:
           .map(URI(_).toURL)
           .toList
 
-    val btmHash = BTMHash:
-      ExtractSha256Hex.findFirstMatchIn(magnetLink)
-        .map(_.group(1))
-        .getOrElse(throw IAE(s"Invalid v2 magnet link: $magnetLink"))
-    val btiHash =
-      ExtractSha1Hex.findFirstMatchIn(magnetLink)
-        .map(_.group(1))
+    val sha1Hash = ExtractSha1Hex.firstMatch(magnetLink).map(BTHash(_))
+    val sha256Hash = ExtractSha256Hex.firstMatch(magnetLink).map(BTMHash(_))
+    val btHash = sha1Hash.orElse(sha256Hash.map(_.asBTHash)) || throwIAE(s"Invalid magnet link, no hash found: $magnetLink")
+    val btmHash = sha256Hash.filter(_ != btHash)
     val dn = ExtractDN.findFirstMatchIn(magnetLink).map(_.group(1)).map(urlDecode)
     val ws = extractURLs(ExtractWS)
     val xs = extractURLs(ExtractXS)
     val tr = extractURLs(ExtractTR)
-    MagnetLink(btmHash, btiHash = btiHash, dn = dn, ws = ws, xs = xs, tr = tr)
+    MagnetLink(btHash, btmHash, dn = dn, ws = ws, xs = xs, tr = tr)

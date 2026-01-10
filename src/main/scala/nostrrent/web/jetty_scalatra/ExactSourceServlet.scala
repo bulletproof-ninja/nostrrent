@@ -10,7 +10,7 @@ import nostrrent.*, web.MimeType
   * @param workDir Root torrent dir
   */
 class ExactSourceServlet(val path: String, workDir: File)
-extends AbstractFileServer(workDir):
+extends AbstractFileServer(AbstractFileServer.fileSystemDir(workDir)):
 
   import HttpServletResponse.*
 

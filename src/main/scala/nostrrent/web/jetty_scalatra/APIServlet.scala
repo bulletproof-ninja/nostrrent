@@ -1,11 +1,10 @@
 package nostrrent.web.jetty_scalatra
 
-import java.io.File
+import org.eclipse.jetty.util.resource.{ Resource, ResourceFactory }
 
 final class APIServlet(val path: String)
-extends AbstractFileServer(APIServlet.workDir(path))
+extends AbstractFileServer(APIServlet.baseDir(path))
 
 object APIServlet:
-  def workDir(path: String): File =
-    File(this.getClass.getResource(s"/web$path").getFile)
-    .getCanonicalFile()
+  def baseDir(path: String)(rf: ResourceFactory): Resource =
+    rf.newClassPathResource(s"/web$path")
