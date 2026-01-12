@@ -7,4 +7,4 @@ extends AbstractFileServer(APIServlet.baseDir(path))
 
 object APIServlet:
   def baseDir(path: String)(rf: ResourceFactory): Resource =
-    rf.newClassPathResource(s"/web$path")
+    rf.newClassLoaderResource(s"/web$path", false)
