@@ -9,6 +9,7 @@ import nostrrent.nostr.NostrSignature
 
 import scala.jdk.CollectionConverters.given
 import nostrrent.bittorrent.BTHash
+import scala.annotation.nowarn
 
 trait UploadPublish:
   torrentServlet: TorrentServlet =>
@@ -20,7 +21,7 @@ trait UploadPublish:
     def withBody(id: NostrrentID, hash: BTHash | Null = null): AR =
       val (ct, body) =
         request.getHeaders("Accept").asScala
-          .flatten(_.split(", ?").iterator)
+          .flatten(_.split(", ?").iterator: @nowarn) // TODO: Remove @nowarn when Scala code updated
           .map(MimeType(_))
           .++(Iterator.single(MimeType.JSON)) // Default return type
           .collectFirst:

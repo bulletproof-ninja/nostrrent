@@ -19,10 +19,10 @@ final case class MagnetLink(
   import MagnetLink.urlEncode
 
   def version: Version =
-    (btHash.len, btmHash) match
-      case (64, _) => Version.v2
-      case (40, None) => Version.v1
-      case (40, Some(_)) => Version.hybrid
+    btHash.len match
+      case 64 => Version.v2
+      case 40 if btmHash.isDefined => Version.hybrid
+      case 40 => Version.v1
 
   override def toString(): String =
     val str = StringBuilder()
