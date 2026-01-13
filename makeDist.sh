@@ -1,4 +1,5 @@
-#!/bin/sh
+#!/usr/bin/env zsh
+set -euo pipefail
 DIST_FILE=./.local/nostrrent-dist.zip
 ./mill clean
 ./mill jar
