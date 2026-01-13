@@ -1,9 +1,21 @@
 package nostrrent
 
+
 package web:
 
+  given Conversion[MimeType, String] with
+    def apply(mt: MimeType) = mt.toString
+
+  class MimeType(mt: String)
+  extends jakarta.activation.MimeType(mt: String):
+    infix def matches(mt: MimeType): Boolean = mt != null && `match`(mt)
+    infix def matches(mtStr: String | Null): Boolean = mtStr != null && `match`(mtStr)
+    def unapply(mtStr: String): Boolean = matches(mtStr)
+    def unapply(mt: MimeType): Boolean = matches(mt)
+
   object MimeType:
-    final val TorrentFile = "application/x-bittorrent"
-    final val JSON = "application/json"
-    final val FormData = "application/x-www-form-urlencoded"
-    final val Multipart = "multipart/form-data"
+    final val TorrentFile = MimeType("application/x-bittorrent")
+    final val JSON = MimeType("application/json")
+    final val PlainText = MimeType("text/plain")
+    final val FormData = MimeType("application/x-www-form-urlencoded")
+    final val Multipart = MimeType("multipart/form-data")

@@ -47,6 +47,7 @@ extends SbtModule:
     mvn"com.typesafe.scala-logging:scala-logging_3:$vScalaLogging" ::
     mvn"ch.qos.logback:logback-classic:$vLogback" ::
     mvn"org.ngengine:bech32:$vBech32" ::
+    mvn"jakarta.activation:jakarta.activation-api:2.1.2" ::
     mvn"org.eclipse.jetty.ee10:jetty-ee10-servlet:$vJetty" ::
     mvn"org.eclipse.jetty:jetty-server:$vJetty" ::
     mvn"org.eclipse.jetty:jetty-util:$vJetty" ::

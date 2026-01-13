@@ -2,7 +2,7 @@ package nostrrent.web.jetty_scalatra
 
 import java.io.File
 import jakarta.servlet.http.{ HttpServletRequest, HttpServletResponse }
-import nostrrent.*, web.MimeType
+import nostrrent.*, web.{MimeType, given}
 
 /**
   * Torrent file server (magnet link `xs` parameter).

@@ -1,17 +1,42 @@
 package nostrrent.web.jetty_scalatra
 
 import nostrrent.*
-import nostrrent.web.*
+import nostrrent.web.{*, given}
 
 import org.{ scalatra => http }
 import scala.util.{ Success, Failure }
 import nostrrent.nostr.NostrSignature
+
+import scala.jdk.CollectionConverters.given
+import nostrrent.bittorrent.BTHash
 
 trait UploadPublish:
   torrentServlet: TorrentServlet =>
 
   private final val FilenameParm = "filename"
   protected final val NostrrentIDParm = "nostrrentID"
+
+  extension[AR <: http.ActionResult](result: AR)
+    def withBody(id: NostrrentID, hash: BTHash | Null = null): AR =
+      val (ct, body) =
+        request.getHeaders("Accept").asScala
+          .flatten(_.split(", ?").iterator)
+          .map(MimeType(_))
+          .++(Iterator.single(MimeType.JSON)) // Default return type
+          .collectFirst:
+            case ct @ MimeType.JSON() => ct -> {
+              if hash == null then s"""{"id":"$id"}"""
+              else s"""{"id":"$id","hash":"$hash"}"""
+            }
+            case ct @ MimeType.PlainText() => ct -> {
+              if hash == null then id.toString
+              else s"$id:$hash"
+            }
+          .get
+      result.copy(
+        body = body,
+        headers = result.headers.updated("Content-Type", ct),
+      ).asInstanceOf[AR]
 
   protected def version: bittorrent.Version =
     import bittorrent.Version
@@ -29,7 +54,7 @@ trait UploadPublish:
     appendExisting: NostrrentID | Null = null)
     : Either[http.ActionResult, NostrrentID] =
 
-    val isMultipartFormData = request.contentType.exists(_.startsWith(MimeType.Multipart))
+    val isMultipartFormData = MimeType.Multipart matches request.getContentType
 
     params.get(FilenameParm) match
 
@@ -99,9 +124,7 @@ trait UploadPublish:
     uploadFiles() match
       case Left(err) => err
       case Right(id) =>
-        contentType = MimeType.JSON
-        val json = s"""{"id":"$id"}"""
-        http.Accepted(json)
+        http.Accepted().withBody(id)
 
   // Additional uploads
   post(s"$UploadPath/:$NostrrentIDParm/?"):

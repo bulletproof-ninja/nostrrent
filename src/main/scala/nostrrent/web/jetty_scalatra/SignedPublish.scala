@@ -5,7 +5,6 @@ import nostrrent.web.*
 
 import org.{ scalatra => http }
 import nostrrent.nostr.NostrSignature
-import org.eclipse.jetty.http.MimeTypes
 import scala.util.Failure
 import scala.util.Success
 
@@ -22,9 +21,7 @@ extends UploadPublish:
         http.BadRequest(err)
       case Right(id) =>
         val btHashHex = bt.generateBTHash(id, version)
-        contentType = MimeType.JSON
-        val json = s"""{"id":"$id","hash":"$btHashHex"}"""
-        http.Accepted(json)
+        http.Accepted().withBody(id, btHashHex)
 
   // Additional upload
   post(s"$UploadPath/:$NostrrentIDParm/?"):
@@ -34,9 +31,7 @@ extends UploadPublish:
         case Left(err) => err
         case Right(id) =>
           val btHashHex = bt.generateBTHash(id, version)
-          contentType = MimeType.JSON
-          val json = s"""{"id":"$id","hash":"$btHashHex"}"""
-          http.Accepted(json)
+          http.Accepted().withBody(id, btHashHex)
 
   private final val PublishPath = "/signed/publish"
 
@@ -47,8 +42,8 @@ extends UploadPublish:
         publishFiles(id, version, hideServer, Some(nostrSig))
 
   private def withProof(thunk: NostrSignature => http.ActionResult): http.ActionResult =
-    val requestType = request.contentType.map(MimeTypes.getBase) match
-      case Some(contentType) => contentType
+    val requestType = request.contentType match
+      case Some(contentType) => MimeType(contentType)
       case None =>
         if request.body.startsWith("{") then MimeType.JSON
         else MimeType.FormData

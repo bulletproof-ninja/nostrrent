@@ -65,10 +65,10 @@ package object nostrrent:
       (1 to RandoLen).foreach(_ => sb.append { Random.between('A', 'Z'+1).toChar } )
       sb.toString
     def apply(maybeID: String): NostrrentID =
-      if unapply(maybeID) then maybeID
+      if Regex matches maybeID then maybeID
       else throwIAE(s"Invalid identifier: $maybeID")
-    def unapply(maybeID: String): Boolean =
-      Regex matches maybeID
+    def unapply(maybeID: String): Boolean = Regex matches maybeID
+
     def lock[R](id: NostrrentID)(thunk: => R): Option[R] =
       LockMap.putIfAbsent(id, ()) match
         case None =>
