@@ -98,9 +98,9 @@ with AutoCloseable:
           torrentDir.torrentFile)
         JLibTorrent.seed(session, torrentDir, info); None
 
-  def seedTorrent(btHash: BTHash): Option[Float] =
+  def seedTorrent(magnet: MagnetLink): Option[Float] =
     val torrent: (handle: TorrentHandle, hash: (Sha1Hash | Sha256Hash)) =
-      btHash.len match
+      magnet.btHash.len match
         case 40 =>
           val hash = Sha1Hash(btHash.toString)
           session.find(hash) -> hash
@@ -112,7 +112,7 @@ with AutoCloseable:
       case handle: TorrentHandle => Some:
         handle.status.progress()
       case null =>
-        val torrentDir = TorrentDir(rootTorrentDir, btHash).ensurePath()
+        val torrentDir = TorrentDir(rootTorrentDir, magnet.btHash).ensurePath()
         session.addListener:
           new AlertListener:
             def types() = new Array(AlertType.METADATA_RECEIVED.swig)
@@ -128,7 +128,6 @@ with AutoCloseable:
                     ByteArrayInputStream(info.bencode),
                     torrentDir.torrentFile)
 
-        val magnet = MagnetLink(btHash)
         JLibTorrent.seed(session, torrentDir, magnet); None
 
 end JLibTorrent

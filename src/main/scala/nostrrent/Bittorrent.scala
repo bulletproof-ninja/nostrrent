@@ -11,6 +11,7 @@ import nostrrent.bittorrent.TorrentDir
 
 object Bittorrent:
   final val MaxTorrentFileSize = 2*1024*1024
+  final val MaxMagnetLinkSize = 64*1024
 
 trait Bittorrent:
   final val MaxTorrentFileSize = Bittorrent.MaxTorrentFileSize
@@ -56,10 +57,10 @@ trait Bittorrent:
 
   /**
     * Seed existing torrent.
-    * @param btHash The torrent SHA-1 or SHA-256 hash
+    * @param magnet Magnet link
     * @return Progress, if already seeding
     */
-  def seedTorrent(btHash: BTHash): Option[Float]
+  def seedTorrent(magnet: MagnetLink): Option[Float]
 
 
 trait LocalFileSystem(val workDir: File, ioBufferSize: Int)

@@ -37,6 +37,6 @@ trait Seed:
 
   put("/seed/:btHash"):
     val btHash = BTHash(params("btHash"))
-    bt.seedTorrent(btHash) match
+    bt.seedTorrent(MagnetLink(btHash)) match
       case None => http.Accepted()
       case Some(progress) => http.Ok(toPercent(progress))
