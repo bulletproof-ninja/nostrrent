@@ -234,6 +234,7 @@ object JLibTorrent:
               at == AlertType.SESSION_STATS ||
               at == AlertType.SESSION_STATS_HEADER ||
               at == AlertType.STATE_UPDATE ||
+              at == AlertType.INCOMING_CONNECTION ||
               at.name.startsWith("DHT_") ||
               at.name.startsWith("PEER_") ||
               at.name.startsWith("LISTEN_") ||
