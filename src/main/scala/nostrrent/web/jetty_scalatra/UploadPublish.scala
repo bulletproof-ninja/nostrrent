@@ -9,7 +9,9 @@ import nostrrent.nostr.NostrSignature
 
 import scala.jdk.CollectionConverters.given
 import nostrrent.bittorrent.BTHash
-import scala.annotation.nowarn
+import annotation.nowarn
+
+import language.implicitConversions
 
 trait UploadPublish:
   torrentServlet: TorrentServlet =>

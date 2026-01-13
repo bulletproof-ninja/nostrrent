@@ -69,6 +69,7 @@ extends SbtModule:
     "-Wunused:all" ::
     "-Wvalue-discard" ::
     "-deprecation" ::
+    "-feature" ::
     Nil
 
   def mandatoryScalacOptions =

@@ -4,6 +4,8 @@ import java.io.File
 import jakarta.servlet.http.{ HttpServletRequest, HttpServletResponse }
 import nostrrent.*, web.{MimeType, given}
 
+import language.implicitConversions
+
 /**
   * Torrent file server (magnet link `xs` parameter).
   * @param path server path prefix

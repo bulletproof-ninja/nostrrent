@@ -1,12 +1,14 @@
 package nostrrent.web
 
+import nostrrent.*
 import org.eclipse.jetty.server.{ Server, ServerConnector }
 import org.eclipse.jetty.util.thread.ThreadPool
 import org.eclipse.jetty.server.HttpConfiguration
 import org.eclipse.jetty.server.HttpConnectionFactory
 import org.eclipse.jetty.ee10.servlet.ServletContextHandler
-import nostrrent.*
 import org.scalatra.util.MultiMapHeadView
+
+import language.implicitConversions
 
 package object jetty_scalatra:
 

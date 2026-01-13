@@ -1,9 +1,8 @@
 package nostrrent
 
-
 package web:
 
-  given Conversion[MimeType, String] with
+  given Conversion[MimeType, String]:
     def apply(mt: MimeType) = mt.toString
 
   class MimeType(mt: String)
