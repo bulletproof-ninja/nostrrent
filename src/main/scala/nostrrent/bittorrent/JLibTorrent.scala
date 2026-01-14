@@ -154,12 +154,6 @@ object JLibTorrent:
     def btHash: BTHash = BTHash:
       Option(info.infoHashV2).map(_.toHex) || info.infoHashV1.toHex
 
-  private case class SeedFile(torrentFile: File, torrentDir: TorrentDir):
-    assert(torrentFile.isFile)
-    assert(torrentDir.path.isDirectory)
-    assert(torrentFile.getName.startsWith(torrentDir.path.getName))
-    assert(torrentFile.getName.endsWith(TorrentFileExt))
-
   private def deleteDir(dir: File): Unit =
     Option(dir.listFiles()).foreach(_.foreach(_.delete()))
     dir.delete(): Unit
@@ -176,9 +170,9 @@ object JLibTorrent:
               TorrentDir.External(BTHash(hash), folder)
             case _ => None
           torrentDir.flatMap: torrentDir =>
-            val torrentFile = File(rootTorrentDir, s"${folder.getName}$TorrentFileExt")
+            val torrentFile = torrentDir.torrentFile
             if torrentFile.isFile then
-              Some(SeedFile(torrentFile, torrentDir))
+              Some(torrentDir)
             else // Cleanup:
               deleteDir(torrentFile)
               deleteDir(folder)
@@ -211,7 +205,7 @@ object JLibTorrent:
     val bytes = Using.resource(FileInputStream(torrentFile)) { _.readAllBytes() }
     TorrentInfo.bdecode(bytes) -> bytes
 
-  private def startSession(session: SessionManager, existing: IterableOnce[SeedFile]): Unit =
+  private def startSession(session: SessionManager, existing: IterableOnce[TorrentDir]): Unit =
     import swig.settings_pack.bool_types.*
 
     val settings = SettingsPack()
@@ -261,8 +255,8 @@ object JLibTorrent:
 
     // Start seeding existing torrents:
     existing.iterator.foreach:
-      case SeedFile(torrentFile, dir) =>
-        val info = loadTorrent(torrentFile).info
-        seed(session, dir, info)
+      case torrentDir =>
+        val info = loadTorrent(torrentDir.torrentFile).info
+        seed(session, torrentDir, info)
 
   end startSession
