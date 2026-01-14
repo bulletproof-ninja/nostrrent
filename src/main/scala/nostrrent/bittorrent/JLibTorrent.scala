@@ -40,6 +40,14 @@ with AutoCloseable:
     val hash = TorrentInfo(torrent.entry.bencode)
     hash.btHash
 
+  protected def publishedMagnet(id: NostrrentID): Option[MagnetLink] =
+    val torrentDir = TorrentDir(rootTorrentDir, id)
+    val torrentFile = torrentDir.torrentFile
+    if torrentFile.isFile then Some:
+      val magnet = loadTorrent(torrentFile).info.makeMagnetUri()
+      MagnetLink.parse(magnet)
+    else None
+
   def publishTorrent(
     id: NostrrentID, sig: Option[NostrSignature],
     version: bittorrent.Version, webSeedURL: Option[URL]) =

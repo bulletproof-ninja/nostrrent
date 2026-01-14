@@ -16,6 +16,14 @@ enum TorrentDir(override val toString: String, val saveDir: File):
     if ! path.exists() then
       if ! path.mkdir() then sys.error(s"Cannot create dir: $path")
     this
+
+  def delete(): Unit =
+    if torrentFile.exists() then
+      throw IllegalStateException(s"Cannot delete published torrent files")
+    else
+      path.listFiles().foreach(_.delete())
+      path.delete(): Unit
+
   case Nostrrent(id: NostrrentID, path: File) extends TorrentDir(id.toString, path.getParentFile)
   case External(hash: BTHash, path: File) extends TorrentDir(hash.toString, path)
 

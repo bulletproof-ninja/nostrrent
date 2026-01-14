@@ -26,13 +26,21 @@ trait Bittorrent:
     */
   def saveFiles(files: Iterator[UploadFile], appendExisting: Option[NostrrentID]): NostrrentID
 
+  /** Delete unpublished files.
+    * @param id The id holding the files
+    * @return `None` if successful, otherwise the hash that the files are published under
+    */
+  def deleteFiles(id: NostrrentID): Option[BTHash]
+
   /**
-    * Generate the Bittorrent multi-hash (v2).
+    * Generate the Bittorrent hash, version dependent.
     * @param id The torrent identifier
     * @param version Bittorrent version
     * @return Hexadecimal BT hash
     */
   def generateBTHash(id: NostrrentID, version: bittorrent.Version): BTHash
+
+  protected def publishedMagnet(id: NostrrentID): Option[MagnetLink]
 
   /**
     * Publish new torrent, and verify signature if available.
@@ -79,7 +87,7 @@ extends Bittorrent:
     val torrentDir = TorrentDir(workDir, id)
 
     def saveFiles(files: Iterator[UploadFile], offset: Int): NostrrentID =
-      val filesWritten = Try:
+      val fileCount = Try:
         files.iterator
           .zipWithIndex.map: // Prefix files with index to preserve order
             case ((filename, inp), idx) =>
@@ -90,13 +98,12 @@ extends Bittorrent:
               f"$idx%03d-$filename" -> inp
           .map(writeTorrentContent(torrentDir.path))
           .size + offset
-      filesWritten match
+      fileCount match
         case Failure(ex) =>
-          torrentDir.path.listFiles().foreach(_.delete())
-          torrentDir.path.delete()
+          torrentDir.delete()
           throw ex
         case Success(0) =>
-          torrentDir.path.delete()
+          torrentDir.delete()
           throwIAE("No file(s) provided")
         case Success(_) =>
           id
@@ -115,6 +122,15 @@ extends Bittorrent:
           .flatMap(n => Try(n.take(3).toInt).toOption)
           .max + 1
     saveFiles(files, offset)
+
+  def deleteFiles(id: NostrrentID): Option[BTHash] =
+    val torrentDir = TorrentDir(workDir, id)
+    if ! torrentDir.exists() then None
+    else if torrentDir.torrentFile.exists() then
+      publishedMagnet(id).map(_.btHash)
+    else
+      torrentDir.delete()
+      None
 
   private def writeTorrentContent(
     torrentFolder: File, ioBuffer: Array[Byte] = new Array(ioBufferSize))(

@@ -119,7 +119,12 @@ components:
           schema:
             $ref: '#/components/schemas/MagnetLink'
       content:
-        application/x-bittorrent: {}
+        'application/x-bittorrent': {}
+    AlreadyPublished:
+      description: Torrent already published, cannot delete.
+      content:
+        'text/plain': {}
+
 
 
   schemas:
@@ -176,7 +181,7 @@ components:
           description: Hexadecimal signature of the Bittorrent hash
 
 tags:
-  - name: Upload and publish
+  - name: Publish files
     description: Single request to upload file(s) and publish torrent.
   - name: Multi-step
     description: Upload file(s) through multiple requests, then publish when ready.
@@ -192,8 +197,8 @@ paths:
 
   /torrent/publish:
     post:
-      summary: Upload file(s) and publish.
-      tags: [Upload and publish]
+      summary: Upload file(s) and publish immediately.
+      tags: [Publish files]
       parameters:
         - $ref: '#/components/parameters/Filename'
         - $ref: '#/components/parameters/V1'
@@ -257,8 +262,19 @@ paths:
         '202': {$ref: '#/components/responses/MoreUploadAccepted'}
         '400': {$ref: '#/components/responses/UploadRejected'}
         '404': {description: Unknown identifier. }
+    delete:
+      summary: Delete id and uploaded files.
+      tags: [Multi-step]
+      parameters:
+        - $ref: '#/components/parameters/NostrrentID'
+      description: |-
+        Delete the identifier and any uploaded files associated with it.
+      responses:
+        '204': {description: Successful deletion.}
+        '409': {$ref: '#/components/responses/AlreadyPublished'}
 
-  /torrent/publish/{id}:
+
+  /torrent/upload/{id}/publish:
     put:
       summary: Publish uploaded file(s)
       tags: [Multi-step]
@@ -365,7 +381,18 @@ paths:
         '400': {$ref: '#/components/responses/UploadRejected'}
         '404': {description: Unknown identifier. }
 
-  /torrent/signed/publish/{id}:
+    delete:
+      summary: Delete id and uploaded files.
+      tags: [Signed publish]
+      parameters:
+        - $ref: '#/components/parameters/NostrrentID'
+      description: |-
+        Delete the identifier and any uploaded files associated with it.
+      responses:
+        '204': {description: Successful deletion.}
+        '409': {$ref: '#/components/responses/AlreadyPublished'}
+
+  /torrent/signed/upload/{id}/publish:
     put:
       summary: Sign and seed uploaded files
       tags: [Signed publish]

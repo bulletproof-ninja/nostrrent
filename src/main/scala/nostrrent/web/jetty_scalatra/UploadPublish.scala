@@ -138,9 +138,18 @@ trait UploadPublish:
         case Right(_) =>
           http.Accepted()
 
+  // Delete unpublished upload
+  delete(s"$UploadPath/:$NostrrentIDParm/?"):
+    val id = NostrrentID(params(NostrrentIDParm))
+    id.locked:
+      bt.deleteFiles(id) match
+        case None => http.NoContent()
+        case Some(btHash) => http.Conflict(s"Already published: $btHash")
+
+
   private final val PublishPath = "/publish"
 
-  put(s"$PublishPath/:$NostrrentIDParm/?"):
+  put(s"$UploadPath/:$NostrrentIDParm/$PublishPath/?"):
     val id = NostrrentID(params(NostrrentIDParm))
     id.locked:
       publishFiles(id, version, hideServer)
