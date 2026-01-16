@@ -43,8 +43,8 @@ trait UploadPublish:
 
   protected def version: bittorrent.Version =
     import bittorrent.Version
-    val v1 = params.get("v1").isDefined
-    val v2 = params.get("v2").isDefined
+    val v1 = params.getBoolean("v1", false)
+    val v2 = params.getBoolean("v2", false)
     (v1, v2) match
       case (true, false) => Version.v1
       case (false, true) => Version.v2
