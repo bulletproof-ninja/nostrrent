@@ -20,20 +20,27 @@ trait UploadPublish:
   protected final val NostrrentIDParm = "nostrrentID"
 
   extension[AR <: http.ActionResult](result: AR)
-    def withBody(id: NostrrentID, hash: BTHash | Null = null): AR =
+    /** Content negotiate return formatting. */
+    def withBody(id: NostrrentID | Null = null, hash: BTHash | Null = null): AR =
       val (ct, body) =
         request.getHeaders("Accept").asScala
-          .flatten(_.split(", ?").iterator: @nowarn) // TODO: Remove @nowarn when Scala code updated
-          .map(MimeType(_))
-          .++(Iterator.single(MimeType.JSON)) // Default return type
+          .flatten(_.split(",").iterator: @nowarn) // TODO: Remove @nowarn when Scala code updated
+          .map(acc => MimeType(acc.trim))
+          .concat(Iterator.single(MimeType.JSON)) // Default return type
           .collectFirst:
             case ct @ MimeType.JSON() => ct -> {
-              if hash == null then s"""{"id":"$id"}"""
-              else s"""{"id":"$id","hash":"$hash"}"""
+              id -> hash match
+                case (null, null) => "{}"
+                case (id, null) => s"""{"id":"$id"}"""
+                case (null, hash) => s"""{"hash":"$hash"}"""
+                case (id, hash) => s"""{"id":"$id","hash":"$hash"}"""
             }
             case ct @ MimeType.PlainText() => ct -> {
-              if hash == null then id.toString
-              else s"$id:$hash"
+              id -> hash match
+                case (null, null) => ""
+                case (id, null) => id.toString
+                case (null, hash) => s":$hash"
+                case (id, hash) => s"$id:$hash"
             }
           .get
       result.copy(

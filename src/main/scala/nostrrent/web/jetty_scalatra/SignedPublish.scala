@@ -31,7 +31,7 @@ extends UploadPublish:
         case Left(err) => err
         case Right(id) =>
           val btHashHex = bt.generateBTHash(id, version)
-          http.Accepted().withBody(id, btHashHex)
+          http.Accepted().withBody(hash = btHashHex)
 
   // Delete unpublished upload
   delete(s"$UploadPath/:$NostrrentIDParm/?"):
