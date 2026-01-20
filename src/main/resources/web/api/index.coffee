@@ -7,7 +7,6 @@ clearViewer = ->
   viewer = document.getElementById 'viewer'
   viewer.innerHTML = ''
   viewer.removeAttribute 'style'
-  viewer.className = 'viewer-reset'
 
 # Render functions
 renderSwagger = ->
@@ -29,13 +28,12 @@ renderScalar = ->
   Scalar.createApiReference '#scalar-app',
     url: specUrl
     configuration:
-      theme: 'light'
       layout: 'modern'
 
 renderRapiDoc = ->
   clearViewer()
   document.getElementById('viewer').innerHTML = """
-    <rapi-doc spec-url="#{specUrl}" persist-api-key="true" allow-try="true" />
+    <rapi-doc spec-url="#{specUrl}" persist-api-key="true" allow-try="true" show-header="false" />
   """
 
 # Map selector value → render function
@@ -45,10 +43,6 @@ renderers =
   scalar:  renderScalar
   rapidoc: renderRapiDoc
 
-onRenderChange = ->
+document.getElementById('renderer-select').onchange = ->
   selected = document.getElementById('renderer-select').value
   renderers[selected]?()
-
-document.getElementById('renderer-select').onchange = onRenderChange
-
-onRenderChange()

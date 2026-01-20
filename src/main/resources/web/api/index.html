@@ -16,14 +16,6 @@
       align-items: center;
     }
     #viewer { height: calc(100vh - 60px); }
-    .viewer-reset {
-      all: unset;                  /* aggressive reset (works in modern browsers) */
-      display: block;
-      height: calc(100vh - 60px);
-      overflow: auto;
-      background: white;           /* or transparent */
-      color: initial;
-    }
     select, button { padding: 0.5rem 1rem; }
   </style>
 
@@ -33,7 +25,7 @@
   <!-- Load renderers (latest stable as of Jan 2026) -->
   <!-- Swagger UI -->
   <link rel="stylesheet" href="https://unpkg.com/swagger-ui-dist@5/swagger-ui.css"/>
-  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js"></script>
+  <script src="https://unpkg.com/swagger-ui-dist@5/swagger-ui-bundle.js" async></script>
 
   <!-- Redoc -->
   <script src="https://unpkg.com/redoc@next/bundles/redoc.standalone.js" async></script>
@@ -45,19 +37,19 @@
 </head>
 <body>
 
-  <div id="controls">
-    <label>API renderer:</label>
-    <select id="renderer-select">
-      <option disabled>Pick one…</option>
-      <option value="swagger" selected>Swagger UI</option>
-      <option value="scalar">Scalar</option>
-      <option value="rapidoc">RapiDoc</option>
-      <option value="redoc">Redoc</option>
-    </select>
 
+  <div id="viewer">
+    <div id="controls">
+      <label>API renderer:</label>
+      <select id="renderer-select">
+        <option disabled selected>Pick one…</option>
+        <option value="swagger">Swagger UI</option>
+        <option value="scalar">Scalar</option>
+        <option value="rapidoc">RapiDoc</option>
+        <option value="redoc">Redoc</option>
+      </select>
+    </div>
   </div>
-
-  <div id="viewer"></div>
 
   <script type="text/coffeescript" src="index.coffee"></script>
 
