@@ -4,7 +4,7 @@ import nostrrent.bittorrent.JLibTorrent
 import java.io.File
 import java.util.Properties
 
-object Main:
+object NostrrentServer:
 
   private val log = Logger(this.getClass)
 
