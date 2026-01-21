@@ -64,7 +64,7 @@ package object jetty_scalatra:
     val apiServlet = APIServlet("/api")
     apiServlet.configure(rootCtx)
 
-    val serverPaths = ServerPaths(xsPathPrefix = xsServlet.path, wsPathPrefix = wsServlet.path)
+    val serverPaths = ServerPaths(xsPathPrefix = xsServlet.urlPath, wsPathPrefix = wsServlet.urlPath)
 
     // Torrent upload & seed server:
     val torrentServlet = TorrentServlet(fileSystem, serverPaths, replaceLocalhost)

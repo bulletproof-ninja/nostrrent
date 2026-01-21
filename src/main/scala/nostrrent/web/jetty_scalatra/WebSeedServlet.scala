@@ -7,5 +7,5 @@ import java.io.File
   * @param path server path prefix
   * @param workDir Root torrent dir
   */
-class WebSeedServlet(val path: String, workDir: File)
+class WebSeedServlet(val urlPath: String, workDir: File)
 extends AbstractFileServer(AbstractFileServer.fileSystemDir(workDir))

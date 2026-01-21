@@ -9,7 +9,7 @@ import org.eclipse.jetty.util.resource.{ ResourceFactory, Resource }
 abstract class AbstractFileServer(getBase: ResourceFactory => Resource)
 extends ResourceServlet:
 
-  def path: String
+  def urlPath: String
 
   protected def servletConfigParms: Map[String, Any] =
     Map(
@@ -18,14 +18,14 @@ extends ResourceServlet:
       "cacheValidationTime" -> -1,
       "dirAllowed" -> false, // We *could* override this for the collection dirs and serve JSON
       "maxCachedFiles" -> 0,
-      "useFileMappedBuffer" -> false, // Seems memory inefficient to enable, *particularly* for large files, and have GC issues
+      "useFileMappedBuffer" -> false, // Seems memory inefficient, *particularly* for large files, and have GC issues
     )
 
   def configure(ctx: ServletContextHandler): Unit =
     val rf = ResourceFactory.of(ctx)
     val base: Resource = getBase(rf)
     ctx.setBaseResource(base)
-    val holder = ctx.addServlet(this, s"$path/*")
+    val holder = ctx.addServlet(this, s"$urlPath/*")
     servletConfigParms.foreach: (key, value) =>
       holder.setInitParameter(key, String.valueOf(value))
 

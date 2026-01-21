@@ -11,7 +11,7 @@ import language.implicitConversions
   * @param path server path prefix
   * @param workDir Root torrent dir
   */
-class ExactSourceServlet(val path: String, workDir: File)
+class ExactSourceServlet(val urlPath: String, workDir: File)
 extends AbstractFileServer(AbstractFileServer.fileSystemDir(workDir)):
 
   import HttpServletResponse.*
