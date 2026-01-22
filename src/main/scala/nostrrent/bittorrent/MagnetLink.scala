@@ -55,23 +55,23 @@ object MagnetLink:
   private val ExtractTR = s"[?&]xs=([^&]+)".r
 
   extension(regex: Regex)
-    def firstMatch(in: String): Option[String] = regex.findFirstMatchIn(in).map(_.group(1).toLowerCase)
+    def firstMatch(in: String): Option[String] =
+      regex.findFirstMatchIn(in).map(_.group(1).toLowerCase)
 
-  private def urlEncode(raw: String): String =
-    URLEncoder.encode(raw, UTF_8)
-  private def urlDecode(encoded: String): String =
-    URLDecoder.decode(encoded, UTF_8)
+  private val urlEncode = URLEncoder.encode(_: String, UTF_8)
+  private val urlDecode = URLDecoder.decode(_: String, UTF_8)
 
   def parse(magnetLink: String): MagnetLink =
 
-    if ! magnetLink.startsWith("magnet:?") then throwIAE(s"Invalid magnet link: $magnetLink")
+    if ! magnetLink.startsWith("magnet:?") then
+      throwIAE(s"Invalid magnet link: $magnetLink")
 
     def extractURLs(regex: Regex): List[URL] =
-        regex.findAllMatchIn(magnetLink)
-          .map(_.group(1))
-          .map(urlDecode)
-          .map(URI(_).toURL)
-          .toList
+      regex.findAllMatchIn(magnetLink)
+        .map(_.group(1))
+        .map(urlDecode)
+        .map(URI(_).toURL)
+        .toList
 
     val sha1Hash = ExtractSha1Hex.firstMatch(magnetLink).map(BTHash(_))
     val sha256Hash = ExtractSha256Hex.firstMatch(magnetLink).map(BTMHash(_))
