@@ -9,7 +9,9 @@ import org.eclipse.jetty.util.resource.{ ResourceFactory, Resource }
 abstract class AbstractFileServer(getBase: ResourceFactory => Resource)
 extends ResourceServlet:
 
-  def urlPath: String
+  def this(absDir: File) = this(AbstractFileServer.fileSystemDir(absDir))
+
+  protected def urlPath: String
 
   protected def servletConfigParms: Map[String, Any] =
     Map(
@@ -39,5 +41,5 @@ extends ResourceServlet:
     res.sendError(HttpServletResponse.SC_FORBIDDEN)
 
 object AbstractFileServer:
-  def fileSystemDir(workDir: File)(rf: ResourceFactory): Resource =
+  private def fileSystemDir(workDir: File)(rf: ResourceFactory): Resource =
     rf.newResource(workDir.toPath)

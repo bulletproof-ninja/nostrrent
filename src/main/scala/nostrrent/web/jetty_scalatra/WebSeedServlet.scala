@@ -8,4 +8,4 @@ import java.io.File
   * @param workDir Root torrent dir
   */
 class WebSeedServlet(val urlPath: String, workDir: File)
-extends AbstractFileServer(AbstractFileServer.fileSystemDir(workDir))
+extends AbstractFileServer(workDir):
