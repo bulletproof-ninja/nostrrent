@@ -126,7 +126,6 @@ components:
         'text/plain': {}
 
 
-
   schemas:
     BTHash:
       oneOf:
@@ -140,7 +139,7 @@ components:
           example: b2c3d4e5f60718293a4b5c6d7e8f9a0b1c7c9a7a5d8f3e2a1b4c6d8e9f0a1ab2
 
     NostrrentID:
-      description: Nostrrent torrent identifier
+      description: Nostrrent torrent identifier. Contains a UTC timestamp and a random string. Clients are encouraged to verify that timestamp is reasonable.
       type: string
       example: 20251231-1421-LZGZVS
     PubKey:
@@ -208,7 +207,10 @@ paths:
         Binary single file upload or multipart upload of one or more files (order is preserved in torrent),
         then publish immediately.
 
-        **NOTE**: Filenames will change to preserve ordering and increase portability.
+        **NOTES:**
+          1. Filenames will change to preserve ordering and increase portability.
+          2. The published id, with timestamp, cannot be verified since publishing is immediate.
+
       requestBody:
         description: Binary or multipart content
         required: true
@@ -395,6 +397,8 @@ paths:
   /torrent/signed/upload/{id}/publish:
     put:
       summary: Sign and seed uploaded files
+      description: |-
+        Verify that signature is valid and embed `npub` and signature in the comment field of the `.torrent` file.
       tags: [Signed publish]
       parameters:
         - $ref: '#/components/parameters/NostrrentID'
