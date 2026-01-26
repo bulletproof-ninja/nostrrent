@@ -1,0 +1,93 @@
+plugins {
+    id 'scala'
+    id 'java-library'
+    id 'application'
+    id 'com.github.maiflai.scalatest' version '0.33'
+    id "com.adarshr.test-logger" version "4.0.0"
+}
+
+repositories {
+    mavenCentral()
+    maven {
+        url = 'https://dl.frostwire.com/maven'
+    }
+}
+
+java {
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(25)
+    }
+}
+
+wrapper {
+    gradleVersion = '8.14.3'
+}
+
+ext {
+    vScala = '3.7.4'
+    vScalaLogging = '3.9.4'
+    vLogBack = '1.5.20'
+    vJetty = '12.1.5'
+    vScalatra = '3.1.2'
+    vJLibTorrent = '2.0.12.7'
+    vJsoniter = '2.38.4'
+    vBech32 = '1.0.3'
+    vAcinqSecp256k1 = '0.19.0'
+    vScalaTest = '3.2.19'
+    vFlexMark = '0.64.8'
+    vBitcoinS = '1.9.11'
+}
+
+dependencies {
+    implementation "org.scala-lang:scala3-library_3:$vScala"
+
+    implementation "com.typesafe.scala-logging:scala-logging_3:$vScalaLogging"
+    implementation "ch.qos.logback:logback-classic:$vLogBack"
+
+    implementation "org.eclipse.jetty:jetty-server:$vJetty"
+    implementation "org.eclipse.jetty:jetty-util:$vJetty"
+    implementation "org.eclipse.jetty.ee10:jetty-ee10-servlet:$vJetty"
+
+    implementation "org.scalatra:scalatra-jakarta_3:$vScalatra"
+
+    implementation "com.frostwire:jlibtorrent:$vJLibTorrent"
+    implementation "com.frostwire:jlibtorrent-linux-x86_64:$vJLibTorrent"
+    implementation "com.frostwire:jlibtorrent-windows:$vJLibTorrent"
+
+    implementation "com.github.plokhotnyuk.jsoniter-scala:jsoniter-scala-core_3:$vJsoniter"
+    compileOnly "com.github.plokhotnyuk.jsoniter-scala:jsoniter-scala-macros_3:$vJsoniter"
+
+    implementation "org.ngengine:bech32:$vBech32"
+
+    implementation "fr.acinq.secp256k1:secp256k1-kmp:$vAcinqSecp256k1"
+    implementation "fr.acinq.secp256k1:secp256k1-kmp-jni-jvm:$vAcinqSecp256k1"
+
+    implementation "jakarta.activation:jakarta.activation-api:2.1.2"
+
+    testImplementation "org.scalatest:scalatest_3:$vScalaTest"
+    testImplementation "com.vladsch.flexmark:flexmark-all:$vFlexMark"
+    testImplementation "org.bitcoin-s:bitcoin-s-core_2.13:$vBitcoinS"
+}
+
+tasks.withType(ScalaCompile).configureEach {
+    scalaCompileOptions.additionalParameters = ["-Wunused:all"]
+}
+
+
+test {
+    testLogging {
+        showStandardStreams = true
+        // exceptionFormat = "full"
+    }
+}
+
+task copyDependencies(type: Copy) {
+    from configurations.runtimeClasspath
+    into "$buildDir/dependencies"
+}
+
+task copyAllDependencies(type: Copy) {
+    from configurations.runtimeClasspath
+    from configurations.testRuntimeClasspath
+    into "$buildDir/dependencies"
+}
