@@ -22,15 +22,14 @@ extends ResourceServlet:
     )
 
   def configure(ctx: ServletContextHandler): Unit =
-    val rf = ResourceFactory.of(ctx)
-    val base: Resource = getBase(rf)
-    ctx.setBaseResource(base)
     val holder = ctx.addServlet(this, s"$urlPath/*")
-    servletConfigParms.foreach: (key, value) =>
-      holder.setInitParameter(key, String.valueOf(value))
-
-  override def init(): Unit =
-    super.init()
+    val rf = ResourceFactory.of(ctx)
+    val servletConfigParms = Map(
+      "baseResource" -> getBase(rf),
+    )
+    (servletConfigParms ++ this.servletConfigParms)
+      .foreach: (key, value) =>
+        holder.setInitParameter(key, String.valueOf(value))
 
   /**
    * Make 404 into 403 to match directory listing attempt.
