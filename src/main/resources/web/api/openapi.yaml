@@ -188,6 +188,9 @@ tags:
     description: Seed existing torrent.
   - name: Signed publish
     description: Upload and publish with Nostr signature.
+  - name: HTTP content
+    description: |-
+      Endpoints for `.torrent` file and web-seeds for HTTP download.
 
 
 paths:
@@ -419,3 +422,30 @@ paths:
           content:
             text/plain: {}
         '404': {description: Unknown identifier. }
+
+  /xs/{torrent-file}:
+    get:
+      description: |-
+        Serve `.torrent` file for magnet link resolution (`xs` parameter).
+      tags: [HTTP content]
+      parameters:
+        - name: torrent-file
+          description: Nostrrent `.torrent` filename
+          in: path
+          required: true
+          schema: { type: string }
+          allowEmptyValue: false
+          example: 20251231-1421-LZGZVS.torrent
+
+  /ws/{id}/{filename}:
+    get:
+      description: |-
+        Serve torrent content over HTTP, if URL is embedded in `.torrent` file and/or magnet link (`ws` parameter)
+      tags: [HTTP content]
+      parameters:
+        - $ref: '#/components/parameters/NostrrentID'
+        - name: filename
+          description: Filename identifier for file in torrent.
+          in: path
+          required: true
+          schema: { type: string }
