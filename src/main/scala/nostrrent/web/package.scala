@@ -5,8 +5,8 @@ package web:
   given Conversion[MimeType, String]:
     def apply(mt: MimeType) = mt.toString
 
-  class MimeType(mt: String)
-  extends jakarta.activation.MimeType(mt: String):
+  class MimeType(override val toString: String)
+  extends jakarta.activation.MimeType(toString: String):
     infix def matches(mt: MimeType): Boolean = mt != null && `match`(mt)
     infix def matches(mtStr: String | Null): Boolean = mtStr != null && `match`(mtStr)
     def unapply(mtStr: String): Boolean = matches(mtStr)
