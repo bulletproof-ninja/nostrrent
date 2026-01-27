@@ -13,8 +13,11 @@ extends ResourceServlet:
 
   protected def urlPath: String
 
-  protected def servletConfigParms: Map[String, Any] =
+  def configure(ctx: ServletContextHandler): Unit =
+    val holder = ctx.addServlet(this, s"$urlPath/*")
+    val rf = ResourceFactory.of(ctx)
     Map(
+      "baseResource" -> getBase(rf),
       "acceptRanges" -> true,
       "cacheControl" -> "public, immutable",
       "cacheValidationTime" -> -1,
@@ -22,16 +25,8 @@ extends ResourceServlet:
       "maxCachedFiles" -> 0,
       "useFileMappedBuffer" -> false, // Seems memory inefficient, *particularly* for large files, and have GC issues
     )
-
-  def configure(ctx: ServletContextHandler): Unit =
-    val holder = ctx.addServlet(this, s"$urlPath/*")
-    val rf = ResourceFactory.of(ctx)
-    val servletConfigParms = Map(
-      "baseResource" -> getBase(rf),
-    )
-    (servletConfigParms ++ this.servletConfigParms)
-      .foreach: (key, value) =>
-        holder.setInitParameter(key, String.valueOf(value))
+    .foreach: (key, value) =>
+      holder.setInitParameter(key, String.valueOf(value))
 
   /**
    * Make 404 into 403 to match directory listing attempt.
