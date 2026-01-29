@@ -154,15 +154,13 @@ trait UploadPublish:
         case Some(btHash) => http.Conflict(s"Already published: $btHash")
 
 
-  private final val PublishPath = "/publish"
-
-  put(s"$UploadPath/:$NostrrentIDParm/$PublishPath/?"):
+  put(s"$UploadPath/:$NostrrentIDParm/publish/?"):
     val id = NostrrentID(params(NostrrentIDParm))
     id.locked:
       publishFiles(id, version, hideServer)
 
   // Upload and publish immediately
-  post(s"$PublishPath/?"):
+  post(s"/publish/?"):
     uploadFiles() match
       case Left(err) => err
       case Right(id) =>

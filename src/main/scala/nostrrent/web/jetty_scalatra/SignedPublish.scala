@@ -41,10 +41,7 @@ extends UploadPublish:
         case None => http.NoContent()
         case Some(btHash) => http.Conflict(s"Already published: $btHash")
 
-
-  private final val PublishPath = "/signed/publish"
-
-  put(s"$UploadPath/:$NostrrentIDParm/$PublishPath/?"):
+  put(s"$UploadPath/:$NostrrentIDParm/publish/?"):
     val id = NostrrentID(params(NostrrentIDParm))
     withProof: nostrSig =>
       id.locked:
