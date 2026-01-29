@@ -268,12 +268,12 @@ paths:
         '400': {$ref: '#/components/responses/UploadRejected'}
         '404': {description: Unknown identifier. }
     delete:
-      summary: Delete id and uploaded files.
+      summary: Delete id and uploaded (but unpublished) files.
       tags: [Multi-step]
       parameters:
         - $ref: '#/components/parameters/NostrrentID'
       description: |-
-        Delete the identifier and any uploaded files associated with it.
+        Delete the identifier and any uploaded files associated with it. Must be unpublished.
       responses:
         '204': {description: Successful deletion.}
         '409': {$ref: '#/components/responses/AlreadyPublished'}
@@ -387,12 +387,12 @@ paths:
         '404': {description: Unknown identifier. }
 
     delete:
-      summary: Delete id and uploaded files.
+      summary: Delete id and uploaded (but unpublished) files.
       tags: [Signed publish]
       parameters:
         - $ref: '#/components/parameters/NostrrentID'
       description: |-
-        Delete the identifier and any uploaded files associated with it.
+        Delete the identifier and any uploaded files associated with it. Must not be published.
       responses:
         '204': {description: Successful deletion.}
         '409': {$ref: '#/components/responses/AlreadyPublished'}
@@ -425,6 +425,7 @@ paths:
 
   /xs/{torrent-file}:
     get:
+      summary: Exact source
       description: |-
         Serve `.torrent` file for magnet link resolution (`xs` parameter).
       tags: [HTTP content]
@@ -439,6 +440,7 @@ paths:
 
   /ws/{id}/{filename}:
     get:
+      summary: Web seed
       description: |-
         Serve torrent content over HTTP, if URL is embedded in `.torrent` file and/or magnet link (`ws` parameter)
       tags: [HTTP content]
