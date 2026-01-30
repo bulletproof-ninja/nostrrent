@@ -154,9 +154,9 @@ object JLibTorrent:
     def btHash: BTHash = BTHash:
       Option(info.infoHashV2).map(_.toHex) || info.infoHashV1.toHex
 
-  private def deleteDir(dir: File): Unit =
-    Option(dir.listFiles()).foreach(_.foreach(_.delete()))
-    dir.delete(): Unit
+  private def deepDelete(file: File): Unit = if file.exists then
+    Option(file.listFiles).foreach(_.foreach(deepDelete))
+    if ! file.delete() then log.warn(s"Could not delete: $file")
 
   def apply(rootTorrentDir: File, ioBufferSize: Int): JLibTorrent =
     val impl = new JLibTorrent(rootTorrentDir, ioBufferSize)
@@ -174,8 +174,8 @@ object JLibTorrent:
             if torrentFile.isFile then
               Some(torrentDir)
             else // Cleanup:
-              deleteDir(torrentFile)
-              deleteDir(folder)
+              deepDelete(torrentFile) // Not file, so either dir (unlikely) or non-existant
+              deepDelete(folder)
               None
         .toList
     startSession(impl.session, seedFolders)
