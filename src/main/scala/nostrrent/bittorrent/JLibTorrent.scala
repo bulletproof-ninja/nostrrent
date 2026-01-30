@@ -110,10 +110,10 @@ with AutoCloseable:
     val torrent: (handle: TorrentHandle, hash: (Sha1Hash | Sha256Hash)) =
       magnet.btHash.len match
         case 40 =>
-          val hash = Sha1Hash(btHash.toString)
+          val hash = Sha1Hash(magnet.btHash.toString)
           session.find(hash) -> hash
         case 64 =>
-          val hash = Sha256Hash(btHash.toString)
+          val hash = Sha256Hash(magnet.btHash.toString)
           (session.find(hash) -> hash)
 
     torrent.handle match
