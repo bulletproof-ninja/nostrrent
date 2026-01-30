@@ -5,8 +5,8 @@ package object bittorrent:
   opaque type BTHash = String
   extension(btHash: BTHash)
     def toBytes(): Array[Byte] = Toolbox.hexToByteArray(btHash)
-    def len: 40 | 64 = btHash.length match { case len: (40 | 64) => len }
-    def urn: String = btHash.len match
+    def length: 40 | 64 = btHash.length match { case len: (40 | 64) => len }
+    def asURN: String = btHash.length match
       case 40 => s"urn:btih:$btHash"
       case 64 => s"urn:btmh:1220$btHash"
 

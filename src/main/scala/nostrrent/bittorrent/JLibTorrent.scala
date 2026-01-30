@@ -38,7 +38,7 @@ with AutoCloseable:
     val path = File(workDir, id.toString)
     val torrent = TorrentBuilder(path, version).generate()
     val hash = TorrentInfo(torrent.entry.bencode)
-    hash.btHash
+    hash.asBTHash
 
   protected def publishedMagnet(id: NostrrentID): Option[MagnetLink] =
     val torrentDir = TorrentDir(rootTorrentDir, id)
@@ -67,7 +67,7 @@ with AutoCloseable:
           val torrentBytes = torrent.entry.bencode
           TorrentInfo.bdecode(torrentBytes) -> torrentBytes
 
-      val btHash = info.btHash
+      val btHash = info.asBTHash
 
       if torrentBytes.length > MaxTorrentFileSize then
         throw TorrentTooBig(torrentBytes.length)
@@ -96,7 +96,7 @@ with AutoCloseable:
       case handle: TorrentHandle => Some:
         handle.status.progress()
       case null =>
-        val btHash = info.btHash
+        val btHash = info.asBTHash
         val proof = Proof.fromComment(info.comment)
         if proof.exists(sig => ! sig.verifySignature(btHash)) then
           throwIAE("Signature verification failed")
@@ -108,7 +108,7 @@ with AutoCloseable:
 
   def seedTorrent(magnet: MagnetLink): Option[Float] =
     val torrent: (handle: TorrentHandle, hash: (Sha1Hash | Sha256Hash)) =
-      magnet.btHash.len match
+      magnet.btHash.length match
         case 40 =>
           val hash = Sha1Hash(magnet.btHash.toString)
           session.find(hash) -> hash
@@ -135,7 +135,6 @@ with AutoCloseable:
                   writeNewFile(
                     ByteArrayInputStream(info.bencode),
                     torrentDir.torrentFile)
-
         JLibTorrent.seed(session, torrentDir, magnet); None
 
 end JLibTorrent
@@ -151,7 +150,7 @@ object JLibTorrent:
     def notPadding: Boolean = ! fileFlags.and_(FLAG_PAD_FILE).nonZero()
 
   extension(info: TorrentInfo)
-    def btHash: BTHash = BTHash:
+    def asBTHash: BTHash = BTHash:
       Option(info.infoHashV2).map(_.toHex) || info.infoHashV1.toHex
 
   private def deepDelete(file: File): Unit = if file.exists then

@@ -13,13 +13,13 @@ final case class MagnetLink(
   xs: List[URL] = Nil,
   tr: List[URL] = Nil):
 
-  if btHash.len == 64 && btmHash.exists(_.asBTHash != btHash) then
+  if btHash.length == 64 && btmHash.exists(_.asBTHash != btHash) then
     throwIAE(s"Cannot have two different SHA-256 hashes:\n\t$btHash\n\t${btmHash.get}")
 
   import MagnetLink.urlEncode
 
   def version: Version =
-    btHash.len match
+    btHash.length match
       case 64 => Version.v2
       case 40 if btmHash.isDefined => Version.hybrid
       case 40 => Version.v1
@@ -30,12 +30,12 @@ final case class MagnetLink(
       rawValues.foreach: rawValue =>
         str += '&' ++= parmName += '='
         str ++= urlEncode(rawValue.toString)
-    str ++= "magnet:?xt=" ++= btHash.urn
+    str ++= "magnet:?xt=" ++= btHash.asURN
     btmHash
       .map(_.asBTHash)
       .filter(_ != btHash) // Don't repeat if same SHA-256 hash
       .foreach: btmHash =>
-        str ++= "&xt=" ++= btmHash.urn
+        str ++= "&xt=" ++= btmHash.asURN
     append("dn", dn)
     append("ws", ws)
     append("xs", xs)
@@ -55,7 +55,7 @@ object MagnetLink:
   private val ExtractTR = s"[?&]xs=([^&]+)".r
 
   extension(regex: Regex)
-    def firstMatch(in: String): Option[String] =
+    def findFirstMatch(in: String): Option[String] =
       regex.findFirstMatchIn(in).map(_.group(1).toLowerCase)
 
   private val urlEncode = URLEncoder.encode(_: String, UTF_8)
@@ -73,8 +73,8 @@ object MagnetLink:
         .map(URI(_).toURL)
         .toList
 
-    val sha1Hash = ExtractSha1Hex.firstMatch(magnetLink).map(BTHash(_))
-    val sha256Hash = ExtractSha256Hex.firstMatch(magnetLink).map(BTMHash(_))
+    val sha1Hash = ExtractSha1Hex.findFirstMatch(magnetLink).map(BTHash(_))
+    val sha256Hash = ExtractSha256Hex.findFirstMatch(magnetLink).map(BTMHash(_))
     val btHash = sha1Hash.orElse(sha256Hash.map(_.asBTHash)) || throwIAE(s"Invalid magnet link, no hash found: $magnetLink")
     val btmHash = sha256Hash
     val dn = ExtractDN.findFirstMatchIn(magnetLink).map(_.group(1)).map(urlDecode)
