@@ -11,6 +11,11 @@ package web:
     infix def matches(mtStr: String | Null): Boolean = mtStr != null && `match`(mtStr)
     def unapply(mtStr: String): Boolean = matches(mtStr)
     def unapply(mt: MimeType): Boolean = matches(mt)
+    override def equals(any: Any): Boolean =
+      any match
+        case that: MimeType => this.toString == that.toString
+        case _ => false
+    override def hashCode(): Int = this.toString.hashCode()
 
   object MimeType:
     final val TorrentFile = MimeType("application/x-bittorrent")
