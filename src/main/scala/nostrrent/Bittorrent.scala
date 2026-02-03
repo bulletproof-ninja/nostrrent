@@ -135,8 +135,15 @@ extends Bittorrent:
   private def writeTorrentContent(
     torrentFolder: File, ioBuffer: Array[Byte] = new Array(ioBufferSize))(
       filename: String, inp: InputStream): Unit =
-    val safeLength = WindowsLengthLimit - torrentFolder.getName.length - 1
-    val safeFilename = WindowsIllegalChars.replaceAllIn(filename, "_").take(safeLength)
+
+    val (name, ext) = WindowsIllegalChars.replaceAllIn(filename, "_").split("\\.") match
+      case Array(name) => // no extension
+        name -> ""
+      case parts =>
+        parts.dropRight(1).mkString(".") -> s".${parts.last}"
+
+    val safeLength = WindowsLengthLimit - torrentFolder.getName.length - 1 - ext.length
+    val safeFilename = name.take(safeLength) + ext
     val file = File(torrentFolder, safeFilename)
     writeNewFile(inp, file, ioBuffer)
 
