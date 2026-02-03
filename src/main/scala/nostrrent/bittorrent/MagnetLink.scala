@@ -52,7 +52,7 @@ object MagnetLink:
   private val ExtractDN = s"[?&]dn=([^&]+)".r
   private val ExtractWS = s"[?&]ws=([^&]+)".r
   private val ExtractXS = s"[?&]xs=([^&]+)".r
-  private val ExtractTR = s"[?&]xs=([^&]+)".r
+  private val ExtractTR = s"[?&]tr=([^&]+)".r
 
   extension(regex: Regex)
     def findFirstMatch(in: String): Option[String] =
