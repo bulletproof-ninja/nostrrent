@@ -2,7 +2,7 @@ package nostrrent.bittorrent
 
 import nostrrent.*, nostr.NostrSignature
 import com.frostwire.jlibtorrent.{
-  TorrentHandle, AlertListener, Sha256Hash,
+  TorrentHandle, AlertListener, Sha1Hash, Sha256Hash,
   SessionManager, SessionParams, SettingsPack,
   TorrentBuilder, TorrentInfo,
   swig, alerts,
@@ -14,7 +14,6 @@ import java.io.{ File, FileInputStream, ByteArrayInputStream }
 import java.net.URL
 import scala.util.{ Try, Using }
 import scala.util.control.NonFatal
-import com.frostwire.jlibtorrent.Sha1Hash
 
 class JLibTorrent private(rootTorrentDir: File, ioBufferSize: Int)
 extends nostrrent.LocalFileSystem(rootTorrentDir, ioBufferSize)
@@ -64,6 +63,7 @@ with AutoCloseable:
           val tb = TorrentBuilder(torrentDir.path, version).creator(Creator)
           proof.foreach(tb.comment)
           webSeedURL.map(_.toString).foreach(tb.addUrlSeed)
+          DefaultTrackers.map(_.toString).foreach(tb.addTracker)
           val torrent = tb.generate()
           val torrentBytes = torrent.entry.bencode
           TorrentInfo.bdecode(torrentBytes) -> torrentBytes
