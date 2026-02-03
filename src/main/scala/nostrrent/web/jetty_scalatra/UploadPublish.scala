@@ -118,7 +118,7 @@ trait UploadPublish:
         val magnet = seedInfo.magnet.copy(dn = None)
         val magnetLink =
           location.filterNot(_ => hideServer)
-            .map(xsURL => magnet.copy(xs = xsURL :: Nil))
+            .map(xsURL => magnet.copy(xs = xsURL.toURI :: Nil))
             .getOrElse(magnet)
             .toString()
         contentType = MimeType.TorrentFile

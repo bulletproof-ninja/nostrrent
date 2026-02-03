@@ -10,8 +10,8 @@ final case class MagnetLink(
   btmHash: Option[BTMHash] = None,
   dn: Option[String] = None,
   ws: List[URL] = Nil,
-  xs: List[URL] = Nil,
-  tr: List[URL] = Nil):
+  xs: List[URI] = Nil,
+  tr: List[URI] = Nil):
 
   if btHash.length == 64 && btmHash.exists(_.asBTHash != btHash) then
     throwIAE(s"Cannot have two different SHA-256 hashes:\n\t$btHash\n\t${btmHash.get}")
@@ -66,11 +66,11 @@ object MagnetLink:
     if ! magnetLink.startsWith("magnet:?") then
       throwIAE(s"Invalid magnet link: $magnetLink")
 
-    def extractURLs(regex: Regex): List[URL] =
+    def extractURIs(regex: Regex): List[URI] =
       regex.findAllMatchIn(magnetLink)
         .map(_.group(1))
         .map(urlDecode)
-        .map(URI(_).toURL)
+        .map(URI(_))
         .toList
 
     val sha1Hash = ExtractSha1Hex.findFirstMatch(magnetLink).map(BTHash(_))
@@ -78,7 +78,7 @@ object MagnetLink:
     val btHash = sha1Hash.orElse(sha256Hash.map(_.asBTHash)) || throwIAE(s"Invalid magnet link, no hash found: $magnetLink")
     val btmHash = sha256Hash
     val dn = ExtractDN.findFirstMatchIn(magnetLink).map(_.group(1)).map(urlDecode)
-    val ws = extractURLs(ExtractWS)
-    val xs = extractURLs(ExtractXS)
-    val tr = extractURLs(ExtractTR)
+    val ws = extractURIs(ExtractWS).map(_.toURL)
+    val xs = extractURIs(ExtractXS)
+    val tr = extractURIs(ExtractTR)
     MagnetLink(btHash, btmHash, dn = dn, ws = ws, xs = xs, tr = tr)
