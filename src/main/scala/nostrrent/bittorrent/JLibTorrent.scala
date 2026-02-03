@@ -63,6 +63,7 @@ with AutoCloseable:
         else
           val tb = TorrentBuilder(torrentDir.path, version).creator(Creator)
           proof.foreach(tb.comment)
+          webSeedURL.map(_.toString).foreach(tb.addUrlSeed)
           val torrent = tb.generate()
           val torrentBytes = torrent.entry.bencode
           TorrentInfo.bdecode(torrentBytes) -> torrentBytes
@@ -75,9 +76,6 @@ with AutoCloseable:
         throw IllegalStateException("Signature mismatch")
       if sig.exists(sig => ! sig.verifySignature(btHash)) then
         throwIAE("Signature validation failed")
-
-      webSeedURL.foreach: webSeedURL =>
-        info.addUrlSeed(webSeedURL.toString)
 
       if ! torrentFile.exists() then
         this.writeNewFile(
