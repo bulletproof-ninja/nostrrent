@@ -8,6 +8,7 @@ import Bittorrent.*
 import scala.util.Using
 import nostrrent.bittorrent.BTHash
 import nostrrent.bittorrent.MagnetLink
+import nostrrent.bittorrent.DefaultTrackers
 
 trait Seed:
   torrentServlet: TorrentServlet =>
@@ -39,6 +40,7 @@ trait Seed:
 
   put("/seed/:btHash"):
     val btHash = BTHash(params("btHash"))
-    bt.seedTorrent(MagnetLink(btHash)) match
+    val magnet = MagnetLink(btHash, tr = DefaultTrackers)
+    bt.seedTorrent(magnet) match
       case None => http.Accepted()
       case Some(progress) => http.Ok(toPercent(progress))
