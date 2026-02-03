@@ -23,7 +23,7 @@ package object bittorrent:
     "udp://tracker.opentrackr.org:1337/announce" ::
     "udp://open.demonii.com:1337/announce" ::
     "udp://exodus.desync.com:6969/announce" ::
-    "udp://tracker.cyberia.is:6969/announce" ::
+    "udp://open.stealth.si:80/announce" ::
     "udp://tracker.torrent.eu.org:451/announce" ::
     "http://torrent.nwps.ws:80/announce" ::
     Nil
