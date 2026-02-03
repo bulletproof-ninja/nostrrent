@@ -60,37 +60,44 @@ trait UploadPublish:
   protected def hideServer: Boolean =
     params.getBoolean("hideServer", false)
 
+  private def getFilename(contentType: MimeType): String =
+    val extLookup = FileExtensionLookup.get(contentType)
+    params.get(FilenameParm)
+      .map: filename =>
+        val ext = extLookup || "" // if lookup fails, just accept filename as-is
+        if filename.endsWith(ext) then filename
+        else s"$filename$ext" // Otherwise attach correct extension type
+      .getOrElse:
+        // If lookup fails, use sub-type
+        val ext = extLookup || s".${contentType.getSubType}"
+        s"${contentType.getPrimaryType}$ext"
+
+
   protected def uploadFiles(
     appendExisting: NostrrentID | Null = null)
     : Either[http.ActionResult, NostrrentID] =
 
-    val isMultipartFormData = MimeType.Multipart matches request.getContentType
-
-    params.get(FilenameParm) match
-
-      case Some(_) if isMultipartFormData => Left:
-        http.BadRequest(s"For ${MimeType.Multipart}, remove `$FilenameParm` query parameter")
-
-      case Some(filename) =>
-        request.getContentLength match
+    Option(request.getContentType).map(MimeType(_)) match
+      case None => Left:
+        http.BadRequest("Content-Type is missing")
+      case Some(contentType) =>
+        val isMultipartFormData = MimeType.Multipart matches contentType
+        if isMultipartFormData then Right:
+          val files =
+            fileMultiParams.iterator
+              .flatMap(_._2)
+              .map: item =>
+                item.name -> item.part.getInputStream
+          bt.saveFiles(files, Option(appendExisting))
+        else request.getContentLength match
           case -1 => Left:
             http.LengthRequired("Content-Length missing")
           case 0 => Left:
             http.BadRequest("No content")
           case _ => Right:
+            val filename = getFilename(contentType)
             val file = Iterator.single(filename -> request.getInputStream)
             bt.saveFiles(file, Option(appendExisting))
-
-      case None if isMultipartFormData => Right:
-        val files =
-          fileMultiParams.iterator
-            .flatMap(_._2)
-            .map: item =>
-              item.name -> item.part.getInputStream
-        bt.saveFiles(files, Option(appendExisting))
-
-      case None => Left:
-        http.BadRequest(s"If not ${MimeType.Multipart}, must provide $FilenameParm query parameter")
 
   end uploadFiles
 

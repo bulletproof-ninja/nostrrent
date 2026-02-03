@@ -1,16 +1,29 @@
 package nostrrent.web
 
 import nostrrent.*
+
 import org.eclipse.jetty.server.{ Server, ServerConnector }
 import org.eclipse.jetty.util.thread.ThreadPool
 import org.eclipse.jetty.server.HttpConfiguration
 import org.eclipse.jetty.server.HttpConnectionFactory
 import org.eclipse.jetty.ee10.servlet.ServletContextHandler
+import org.eclipse.jetty.http.MimeTypes
+
 import org.scalatra.util.MultiMapHeadView
 
+import scala.jdk.CollectionConverters.given
 import language.implicitConversions
 
 package object jetty_scalatra:
+
+  val FileExtensionLookup =
+    MimeTypes.DEFAULTS.getMimeMap().entrySet.iterator
+      .asScala.foldLeft(Map.empty[MimeType, String]):
+        case (map, entry) =>
+          val ext = s".${entry.getKey}"
+          val mt = MimeType(entry.getValue)
+          map.updated(mt, ext)
+
 
   private val log = Logger(this.getClass)
 
