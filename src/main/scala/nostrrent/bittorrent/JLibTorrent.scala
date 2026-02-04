@@ -14,6 +14,7 @@ import java.io.{ File, FileInputStream, ByteArrayInputStream }
 import java.net.URL
 import scala.util.{ Try, Using }
 import scala.util.control.NonFatal
+import java.net.{ Inet4Address, Inet6Address }
 
 class JLibTorrent private(rootTorrentDir: File, ioBufferSize: Int)
 extends nostrrent.LocalFileSystem(rootTorrentDir, ioBufferSize)
@@ -189,7 +190,7 @@ object JLibTorrent:
     val infoHash = info.infoHashV2() match
       case null => info.infoHashV1().toHex()
       case v2 => v2.toHex()
-    log.info(s"Seeding $infoHash: `${torrentDir.path}` from `${torrentDir.saveDir}`")
+    log.info(s"Seeding $infoHash: `${torrentDir.path.getName}` from `${torrentDir.saveDir}`")
     val seedFlags = torrentDir match
       case _: TorrentDir.Nostrrent => CompleteTorrentFlags
       case _ => UnknownStatusFlags
@@ -228,7 +229,7 @@ object JLibTorrent:
         def types(): Array[Int] =
           AlertType.values()
             .toSet
-            .filterNot: at => // Remove noise:
+            .filterNot: at => // Blacklist:
               at == AlertType.UNKNOWN ||
               at == AlertType.SESSION_STATS ||
               at == AlertType.SESSION_STATS_HEADER ||
@@ -238,7 +239,7 @@ object JLibTorrent:
               at.name.startsWith("PEER_") ||
               at.name.startsWith("LISTEN_") ||
               at.name.startsWith("FASTRESUME_")
-            .concat: // Ensure specific alerts:
+            .concat: // Whitelist:
               Set(
                 AlertType.DHT_STATS,
                 AlertType.PEER_BLOCKED,
