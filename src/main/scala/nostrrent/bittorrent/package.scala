@@ -3,7 +3,11 @@ package nostrrent
 import java.net.URI
 
 package object bittorrent:
+
+  final val DefaultPort = 6881
+
   final val BTHashValidation = "^[0-9A-Fa-f]{40}$|^[0-9A-Fa-f]{64}$".r
+
   opaque type BTHash = String
   extension(btHash: BTHash)
     def toBytes(): Array[Byte] = Toolbox.hexToByteArray(btHash)

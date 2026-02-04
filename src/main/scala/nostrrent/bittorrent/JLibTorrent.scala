@@ -206,8 +206,16 @@ object JLibTorrent:
   private def startSession(session: SessionManager, existing: IterableOnce[TorrentDir]): Unit =
     import swig.settings_pack.bool_types.*
 
-    val settings = SettingsPack()
+    val netAddrs =
+      net.OutgoingAddresses
+        .map:
+          case ipv4: Inet4Address =>
+            s"${ipv4.getHostAddress}:$DefaultPort"
+          case ipv6: Inet6Address =>
+            val addr = ipv6.getHostAddress.takeWhile(_ != '%')
+            s"[$addr]:$DefaultPort"
 
+    val settings = SettingsPack()
     Map( // Boolean settings:
       enable_upnp -> true,
       enable_natpmp -> true,
@@ -222,6 +230,9 @@ object JLibTorrent:
     settings.setEnableDht(true)
     settings.setEnableLsd(false)
     settings.seedingOutgoingConnections(true)
+    settings.listenInterfaces(netAddrs.mkString(","))
+
+    netAddrs.foreach(addr => log.info(s"Listening to: $addr"))
 
     session.addListener:
       new AlertListener:
