@@ -1,0 +1,26 @@
+package build
+
+object git:
+
+  private def splitLines(out: String): List[String] = out.split("[\\r\\n]+").toList
+
+  def headTags(grep: String = "."): List[String] =
+    val result =
+      os.proc("git", "tag", "--contains", "HEAD")
+        .pipeTo { os.proc("grep", grep) }
+        .call(check = false)
+    splitLines(result.out.text())
+
+  def headReleaseVersion(grepReleaseVersion: String): Option[String] =
+    headTags(grepReleaseVersion).headOption
+
+  def latestTags(limit: Int, grep: String = "."): List[String] =
+    val result =
+      os.proc("git", "tag", "--sort=-creatordate")
+        .pipeTo { os.proc("grep", grep) }
+        .pipeTo { os.proc("head", "-n", limit) }
+        .call(check = false)
+    splitLines(result.out.text())
+
+  def latestVersionTag(grepVersion: String): Option[String] =
+    latestTags(1, grepVersion).headOption

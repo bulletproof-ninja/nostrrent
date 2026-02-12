@@ -1,4 +1,4 @@
-//| mill-version: 1.1.0-RC4-85-726bd3
+//| mill-version: 1.1.2
 
 import mill.*, scalalib.*, javalib.*
 import mill.util.Jvm
@@ -7,7 +7,7 @@ object `package`
 extends SbtModule:
   outer =>
 
-  def publishVersion = "1.0.0-SNAPSHOT"
+  def publishVersion = nostrrent.version
 
   def scalaVersion = "3.7.4"
   def jvmVersion = "25"

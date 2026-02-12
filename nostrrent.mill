@@ -1,0 +1,29 @@
+package build
+
+object nostrrent:
+
+  /**
+    * Version tags come in two forms:
+    * 1. Release: `version/release/major.minor.patch`
+    * 2. Snapshot: `version/snapshot/major.minor.patch`
+    */
+  def version =
+    git.headReleaseVersion("^version/release/").map(_.split("/")) match
+      case Some(Array(_, _, releaseVersion)) =>
+        releaseVersion
+      case _ =>
+        val latest = git.latestVersionTag("^version/").getOrElse("version/snapshot/1.0.0")
+        val Array(_, vType, vNum) = latest.split("/")
+        val snapshotVersion = vType match
+          case "snapshot" =>
+            vNum
+          case "release" =>
+            val version = vNum.split("\\.").map(_.toInt)
+            version.length match
+              case 0 => sys.error(s"Invalid version: $vNum")
+              case 1 => version(0) += 1
+              case n =>
+                version(1) += 1
+                (2 until n).foreach(version(_) = 0)
+            version.mkString(".")
+        snapshotVersion + "-SNAPSHOT"
